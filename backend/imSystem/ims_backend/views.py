@@ -74,6 +74,17 @@ class Inventory(APIView):
 
 
 
+#TODO: API de las ambulancias
+class AmbulanciaAPI(APIView):
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [ControlProfileOnly()]
+    
+
+    def get(self, request):
+        data_ambulancias = Ambulancia.objects.all().values('id', 'patente','modelo','estado_disponibilidad')
+        return Response(list(data_ambulancias), status=status.HTTP_200_OK)
 
 
 #TODO: API para obtener datos del personal
