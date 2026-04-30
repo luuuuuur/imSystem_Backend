@@ -1,0 +1,8 @@
+SECRET_KEY=tu_clave_secreta_aqui
+PASSWORD_KEY=tu_clave_secreta_aqui
+DB_NAME=nombre_de_la_db
+DB_USER=usuario_postgres
+DB_PASSWORD=contraseña_del_usuario_de_postgres  
+DB_HOST=host
+DB_PORT=puerto
+UPLOAD_TO=lugar_a_guardar

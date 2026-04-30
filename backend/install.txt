@@ -1,0 +1,9 @@
+Django==6.0.4
+python-dotenv==1.2.2
+psycopg2-binary
+djangorestframework
+cryptography
+gunicorn
+django-storages[s3]
+pyotp
+django-cors-headers

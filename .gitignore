@@ -1,0 +1,23 @@
+# Python / Django Backend
+#enviroment and env files
+backend/env
+backend/imSystem/.mikufile
+#pycaches
+backend/imSystem/ims_backend/__pycache__/
+backend/imSystem/ims_backend/migrations/__pycache__/
+backend/imSystem/backend_config/__pycache__
+backend/imSystem/__pycache__/
+#KEYS
+backend/imSystem/*.pem
+backend/imSystem/*.pub
+#sqlites
+backend/imSystem/db.sqlite3
+#static files
+backend/staticfiles/
+#tests
+backend/imSystem/seed.py
+########FIN BACKEND###########
+
+
+#SCRIPTS
+send.sh
