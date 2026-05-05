@@ -307,3 +307,12 @@ class LogAuditoria(models.Model):
 
     def __str__(self):
         return f"[{self.timestamp}] {self.rut_usuario} - {self.descripcion[:50]}"
+    
+
+
+class DeviceToken(models.Model):
+    device_token = models.CharField(max_length=255, null=False, blank=False, unique=True)
+    usuario = models.ForeignKey(Personal, related_name="token_personal", on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"device token: {self.device_token}, user: {self.usuario}, created at: {self.created_at}"
