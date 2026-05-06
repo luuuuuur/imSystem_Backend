@@ -26,6 +26,7 @@ from .models import RolPersonal
 from .models import Despacho
 from .models import Ambulancia
 from .models import DespachoPersonal
+from .models import Atencion
 # Create your views here.
 #----CLASS BASED VIEWS----
 # Permiso custom: restringe acceso a usuarios con rol control
@@ -124,6 +125,12 @@ class DocumentsAPI(APIView):
     def post(self,request):
         data = request.data
         try:
+            with transaction.atomic():
+                
+                despacho_asign = get_object_or_404(Despacho, )
+                paciente = get_object_or_404(Paciente, rut=data.get('rut'))
+                ambulancia = get_object_or_404(Ambulancia, patente=data.get('movilAsignado'))
+                Atencion.objects.create(paciente=paciente, ambulancia=ambulancia,)
             converted_data = json.dumps(data,sort_keys=True, ensure_ascii=False)
             sha_256 = hashlib.sha256(converted_data.encode('utf-8')).hexdigest()
             sign = GLOBAL_PRIVATE_KEY.sign(bytes.fromhex(sha_256))
