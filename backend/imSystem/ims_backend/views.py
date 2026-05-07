@@ -126,11 +126,13 @@ class DocumentsAPI(APIView):
         data = request.data
         try:
             with transaction.atomic():
-                
-                despacho_asign = get_object_or_404(Despacho, )
                 paciente = get_object_or_404(Paciente, rut=data.get('rut'))
                 ambulancia = get_object_or_404(Ambulancia, patente=data.get('movilAsignado'))
                 Atencion.objects.create(paciente=paciente, ambulancia=ambulancia,)
+                despacho_asign = get_object_or_404(Despacho, data.get('despachoId'))
+                despacho_asign.objects.update(direccion_origen=data.get('paciente',{}).get('direccionOrigen'),
+                                              direccion_destino=data.get('paciente',{}).get('direccionDestino'),
+                                              )
             converted_data = json.dumps(data,sort_keys=True, ensure_ascii=False)
             sha_256 = hashlib.sha256(converted_data.encode('utf-8')).hexdigest()
             sign = GLOBAL_PRIVATE_KEY.sign(bytes.fromhex(sha_256))

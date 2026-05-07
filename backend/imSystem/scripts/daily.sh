@@ -1,14 +1,54 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-echo "=== [$(date)] INICIANDO DAILY ==="
+# ==DETECCION DE USUARIO BASE==
+if [ ! -f /etc/os-release ]; then
+    echo "ERROR: No se puede detectar la distribución. /etc/os-release no existe."
+    exit 1
+fi
+
+source /etc/os-release
+
+case "$ID" in
+    ubuntu|debian)
+        BASE_USER="ubuntu"
+        ;;
+    rhel|centos|fedora|amzn|rocky|almalinux)
+        BASE_USER="ec2-user"
+        ;;
+    *)
+        case "${ID_LIKE:-}" in
+            *debian*)               BASE_USER="ubuntu"   ;;
+            *rhel*|*centos*|*fedora*) BASE_USER="ec2-user" ;;
+            *)
+                echo "ERROR: Distribución no soportada: $ID"
+                exit 1
+                ;;
+        esac
+        ;;
+esac
+
+BASE_DIR="/home/${BASE_USER}/backend"
+APP_DIR="${BASE_DIR}/imSystem"
+PIP="${BASE_DIR}/env/bin/pip"
+PYTHON="${BASE_DIR}/env/bin/python3"
+
+# ==VALIDACIONES PREVIAS==
+for path in "$BASE_DIR" "$APP_DIR" "${BASE_DIR}/install.txt" "${APP_DIR}/manage.py"; do
+    if [ ! -e "$path" ]; then
+        echo "ERROR: $path no existe. Abortando."
+        exit 1
+    fi
+done
+
+echo "=== [$(date)] INICIANDO DAILY === (distro: $ID, usuario: $BASE_USER)"
 
 echo "=== ACTUALIZANDO DEPENDENCIAS ==="
-/home/ubuntu/backend/env/bin/pip install -r /home/ubuntu/backend/install.txt --quiet
+"$PIP" install -r "${BASE_DIR}/install.txt" --quiet
 
 echo "=== APLICANDO MIGRACIONES ==="
-/home/ubuntu/backend/env/bin/python3 /home/ubuntu/backend/imSystem/manage.py makemigrations --noinput
-/home/ubuntu/backend/env/bin/python3 /home/ubuntu/backend/imSystem/manage.py migrate --noinput
+"$PYTHON" "${APP_DIR}/manage.py" makemigrations --noinput
+"$PYTHON" "${APP_DIR}/manage.py" migrate --noinput
 
 echo "=== REINICIANDO GUNICORN Y NGINX ==="
 sudo systemctl daemon-reload
@@ -16,7 +56,5 @@ sudo systemctl restart nginx
 sudo systemctl restart gunicorn
 
 echo "=== STATUS ==="
-sudo systemctl status gunicorn --no-pager
-sudo systemctl status nginx --no-pager
-
-echo "=== [$(date)] DAILY COMPLETADO ==="
+sudo systemctl is-active nginx    && echo "nginx:    activo" || echo "ERROR: nginx no está activo"
+sudo systemctl is-active gunicorn &
