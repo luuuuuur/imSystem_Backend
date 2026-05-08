@@ -10,6 +10,8 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.db import transaction
 from django.forms.models import model_to_dict
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
 #---PYTHON INCLUDES IMPORTS---
 import hashlib
 import json
@@ -27,21 +29,47 @@ from .models import Despacho
 from .models import Ambulancia
 from .models import DespachoPersonal
 from .models import Atencion
-# Create your views here.
-#----CLASS BASED VIEWS----
+
+#---CLASS PERMISSION BASED---
 # Permiso custom: restringe acceso a usuarios con rol control
 # Usar en vistas donde solo personal de control debe operar (como por ejemplo asignar trabajores, despachos etc)
 class ControlProfileOnly(BasePermission):
     def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
         return request.user.is_authenticated and request.user.rol.nombre_rol == 'control'
 class MedicProfileOnly(BasePermission):
     def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
         return request.user.is_authenticated and request.user.rol.nombre_rol == 'medic'     
 class NurseProfileOnly(BasePermission):
     def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
         return request.user.is_authenticated and request.user.rol.nombre_rol == 'nurse'
+    
+class DriverProfileOnly(BasePermission):
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return Response({}, status=status.HTTP_401_UNAUTHORIZED)
+        return request.user.is_authenticated and request.user.rol.nombre_rol == 'driver'
 
-class Login(APIView):
+
+class WorkerProfileOnly(BasePermission):
+    def has_permission(self, request,views):
+        if not request.user.is_authenticated:
+            return Response({}, status=status.HTTP_401_UNAUTHORIZED)
+        return request.user.is_authenticated and request.user.rol.nombre_rol in ['medic', 'nurse', 'driver']
+
+
+#--CSRF TOKEN METHOD CLASS---
+class EnsureCsrfMixin:
+    @method_decorator(ensure_csrf_cookie)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+#----CLASS BASED VIEWS----
+class Login(EnsureCsrfMixin, APIView):
     #TODO: Implementacion de MFA con Google Authenticator (TOTP)
     permission_classes = []
     def post(self, request):
@@ -267,3 +295,123 @@ class AsignarDespacho(APIView):
 #TODO: Creacion de la API de logs para Auditorías -> para debatir
 #TODO: Creación de la API de exportación de las atenciones en formatio FHIR HL7
 #TODO: Creación de la API de tickets para recuperación de credenciales
+
+
+
+# TESTING API DESPACHOS ASIGNADOS
+class DespachoUsuarioAPI(APIView):
+    permission_classes = [WorkerProfileOnly]
+    def get(self, request):
+        try:
+            # buscar el grupo activo del usuario
+            suscripcion = SuscritosAGrupo.objects.filter(
+                personal=request.user,
+                fecha_salida=None
+            ).first()
+
+            if not suscripcion:
+                return Response([], status=status.HTTP_200_OK)
+
+            # buscar despachos asignados a ese grupo
+            despachos = DespachoPersonal.objects.filter(
+                grupo=suscripcion.grupo
+            ).select_related(
+                'despacho',
+                'despacho__ambulancia',
+                'despacho__creado_por',
+            ).exclude(
+                despacho__estado__in=['finalizado', 'cancelado']
+            )
+            personal = SuscritosAGrupo.objects.filter(
+                    grupo=suscripcion.grupo,
+                    fecha_salida=None
+                ).values(
+                    'personal__id',
+                    'personal__first_name',
+                    'personal__last_name',
+                    'personal__rut',
+                    'personal__rol__nombre_rol',
+            )
+            resultado = []
+            for dp in despachos:
+                d = dp.despacho
+                # obtener personal del grupo
+                resultado.append({
+                    'id': str(d.id),
+                    'estado': d.estado,
+                    'direccionOrigen': d.direccion_origen,
+                    'direccionDestino': d.direccion_destino,
+                    'descripcionLlamado': d.descripcion_llamado,
+                    'fechaLlamado': d.fecha_llamado,
+                    'ambulancia': {
+                        'id': str(d.ambulancia.id),
+                        'patente': d.ambulancia.patente,
+                        'modelo': d.ambulancia.modelo,
+                        'estado': d.ambulancia.estado_disponibilidad,
+                    } if d.ambulancia else None,
+                    'personalIds': [str(p['personal__id']) for p in personal],
+                    'personal': list(personal),
+                })
+
+            return Response(resultado, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AtencionAPI(APIView):
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return Response({'error': 'No autenticado'},
+                            status=status.HTTP_401_UNAUTHORIZED)
+        try:
+            atenciones = Atencion.objects.filter(
+                registrado_por=request.user
+            ).order_by('-fecha_registro').values(
+                'id', 'fecha_registro', 'estado_sello'
+            )
+            return Response(list(atenciones), status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def post(self, request):
+        if not request.user.is_authenticated:
+            return Response({'error': 'No autenticado'},
+                            status=status.HTTP_401_UNAUTHORIZED)
+        try:
+            data = request.data
+            despacho_id = data.get('despachoId')
+            despacho = get_object_or_404(
+                Despacho, id=despacho_id) if despacho_id else None
+            atencion = Atencion.objects.create(
+                registrado_por=request.user,
+                despacho=despacho,
+                datos_atencion=data,
+            )
+            return Response({'id': atencion.id},
+                            status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AtencionDetalleAPI(APIView):
+    def get(self, request, id):
+        if not request.user.is_authenticated:
+            return Response({'error': 'No autenticado'},
+                            status=status.HTTP_401_UNAUTHORIZED)
+        try:
+            atencion = get_object_or_404(
+                Atencion,
+                id=id,
+                registrado_por=request.user
+            )
+            return Response({
+                'id': atencion.id,
+                'fecha_registro': atencion.fecha_registro,
+                'datos_atencion': atencion.datos_atencion,
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
