@@ -15,7 +15,14 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 #---PYTHON INCLUDES IMPORTS---
 import hashlib
 import json
-
+#---SERIALIZERS---
+from serializers import PersonalSerializer
+from serializers import CrearGrupoSerializer
+from serializers import RemoverMiembroGrupo
+from serializers import AgregarMiembroGrupo
+from serializers import PacienteSerializer
+from serializers import DespachoSerializer
+from serializers import AsignarDespachoSerializer
 #---PERSONAL MODULES IMPORTS---
 from load_key import GLOBAL_PRIVATE_KEY
 from . import utils
@@ -35,32 +42,21 @@ from .models import Atencion
 # Usar en vistas donde solo personal de control debe operar (como por ejemplo asignar trabajores, despachos etc)
 class ControlProfileOnly(BasePermission):
     def has_permission(self, request, view):
-        if not request.user.is_authenticated:
-            return Response({}, status=status.HTTP_400_BAD_REQUEST)
-        return request.user.is_authenticated and request.user.rol.nombre_rol == 'control'
+        return bool(request.user and request.user.is_authenticated and request.user.rol.nombre_rol == 'control')
 class MedicProfileOnly(BasePermission):
     def has_permission(self, request, view):
-        if not request.user.is_authenticated:
-            return Response({}, status=status.HTTP_400_BAD_REQUEST)
-        return request.user.is_authenticated and request.user.rol.nombre_rol == 'medic'     
+        return bool(request.user and request.user.is_authenticated and request.user.rol.nombre_rol == 'medic')    
 class NurseProfileOnly(BasePermission):
     def has_permission(self, request, view):
-        if not request.user.is_authenticated:
-            return Response({}, status=status.HTTP_400_BAD_REQUEST)
-        return request.user.is_authenticated and request.user.rol.nombre_rol == 'nurse'
+        return bool(request.user and request.user.is_authenticated and request.user.rol.nombre_rol == 'nurse')
     
 class DriverProfileOnly(BasePermission):
     def has_permission(self, request, view):
-        if not request.user.is_authenticated:
-            return Response({}, status=status.HTTP_401_UNAUTHORIZED)
-        return request.user.is_authenticated and request.user.rol.nombre_rol == 'driver'
-
+        return bool(request.user and request.user.is_authenticated and request.user.rol.nombre_rol == 'driver')
 
 class WorkerProfileOnly(BasePermission):
     def has_permission(self, request,views):
-        if not request.user.is_authenticated:
-            return Response({}, status=status.HTTP_401_UNAUTHORIZED)
-        return request.user.is_authenticated and request.user.rol.nombre_rol in ['medic', 'nurse', 'driver']
+        return bool(request.user.is_authenticated and request.user.rol.nombre_rol in ['medic', 'nurse', 'driver'])
 
 
 #--CSRF TOKEN METHOD CLASS---
@@ -89,10 +85,10 @@ class Login(EnsureCsrfMixin, APIView):
             login(request,user)
             #TODO: obtener el rol del usuario para retornarlo dentro del json
             return Response({'success':'success', 'role': user.rol.nombre_rol}, status=status.HTTP_200_OK)
-        except ValueError as v:
-            return Response({'error':str(v)}, status=status.HTTP_401_UNAUTHORIZED)
-        except Exception as e:
-            return Response({'error':'Fallo interno: ' + str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except ValueError:
+            return Response({'error':'wrong values check again'}, status=status.HTTP_401_UNAUTHORIZED)
+        except Exception:
+            return Response({'error':'inner error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -107,7 +103,7 @@ class Inventory(APIView):
 class AmbulanciaAPI(APIView):
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [AllowAny()]
+            return [WorkerProfileOnly()]
         return [ControlProfileOnly()]
     
 
@@ -119,48 +115,69 @@ class AmbulanciaAPI(APIView):
 #TODO: API para obtener datos del personal
 class DataPersonal(APIView):
     def get_permissions(self):
+        # Paréntesis agregados para instanciar las clases correctamente
         if self.request.method == 'GET':
-            return[AllowAny()]
+            return [WorkerProfileOnly()]
         return [ControlProfileOnly()]
+
     def get(self, request):
-        data_personal = Personal.objects.filter(is_active=True).values(
-            'id', 'first_name', 'last_name', 'rut', 'rol__nombre_rol','is_active')
-        return Response(list(data_personal), status=status.HTTP_200_OK)
+        personal_activo = Personal.objects.filter(is_active=True)
+        
+
+        serializer = PersonalSerializer(personal_activo, many=True)
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     def post(self, request):
-        data = request.data
-        try:
-            key,totp= utils.generate_totp()
-            temp = utils.generate_password()
-            rol = get_object_or_404(RolPersonal, id=data.get("rol_id"))
-            uri = totp.provisioning_uri(name=data.get('rut'), issuer_name='IMS Sistema')
-            Personal.objects.create_user(username=data.get("rut"),
-                                         first_name=data.get("first_name"),
-                                         last_name=data.get("last_name"),
-                                         password=temp,
-                                         totp_secret =key,
-                                         rut=data.get("rut"),
-                                         rol=rol)
-            return Response({'success':'success', 'totp_uri':uri, 'password':temp}, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({'error':str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        serializer = PersonalSerializer(data=request.data)
+
+        if serializer.is_valid():
+            try:
+
+                valid_data = serializer.validated_data
+                
+                rut = valid_data.get('rut')
+                first_name = valid_data.get('first_name')
+                last_name = valid_data.get('last_name')
+                
+
+                rol_id = request.data.get("rol_id")
+                rol = get_object_or_404(RolPersonal, id=rol_id)
+
+                key, totp = utils.generate_totp()
+                temp = utils.generate_password()
+                uri = totp.provisioning_uri(name=rut, issuer_name='IMS Sistema')
+                
+               
+                usuario = Personal.objects.create_user(
+                    username=rut,
+                    first_name=first_name,
+                    last_name=last_name,
+                    password=temp,
+                    totp_secret=key,
+                    rut=rut,
+                    rol=rol
+                )
+                
+                return Response({
+                    'success': 'success', 
+                    'totp_uri': uri, 
+                    'password': temp,
+                    'usuario_id': usuario.id
+                }, status=status.HTTP_201_CREATED)
+                
+            except Exception:
+                return Response({'error': 'failed to generate the uri and user data'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 #TODO: Creacion de la validación del TOTP (MFA)
 #TODO: Creación de la API de notificaciones -> SSE
 #TODO: Creación de la API para carga de documentos y descarga de documentos (SOLO lectura, generar un QR desde HASH) -> prioridad
-#AUN NO FUNCIONA
-#TODO: Creación de la API para la modificación de los documentos
 class DocumentsAPI(APIView):
     def post(self,request):
         data = request.data
         try:
-            with transaction.atomic():
-                paciente = get_object_or_404(Paciente, rut=data.get('rut'))
-                ambulancia = get_object_or_404(Ambulancia, patente=data.get('movilAsignado'))
-                Atencion.objects.create(paciente=paciente, ambulancia=ambulancia,)
-                despacho_asign = get_object_or_404(Despacho, data.get('despachoId'))
-                despacho_asign.objects.update(direccion_origen=data.get('paciente',{}).get('direccionOrigen'),
-                                              direccion_destino=data.get('paciente',{}).get('direccionDestino'),
-                                              )
+                                              
             converted_data = json.dumps(data,sort_keys=True, ensure_ascii=False)
             sha_256 = hashlib.sha256(converted_data.encode('utf-8')).hexdigest()
             sign = GLOBAL_PRIVATE_KEY.sign(bytes.fromhex(sha_256))
@@ -168,8 +185,8 @@ class DocumentsAPI(APIView):
             data["Firma"] = str(sign.hex())
             #TODO: Preparar json para subir a S3
             return Response({'success':'success'}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception:
+            return Response({'error': 'failed to save the file'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
 
@@ -177,35 +194,54 @@ class DocumentsAPI(APIView):
 class Grupos(APIView):
     def get_permissions(self):
         if self.request.method == 'GET':
-            return[AllowAny()]
+            return[WorkerProfileOnly()]
         return [ControlProfileOnly()]
+    
+
+
+
     def post(self, request):
-        data = request.data
-        try:
-            with transaction.atomic():
-                grupo = GrupoPersonal.objects.create(nombre_grupo= data.get('nombre_grupo'))
-                for p_fk in data.get('personal', []):
-                    persona = Personal.objects.get(id=p_fk)
-                    SuscritosAGrupo.objects.create(grupo=grupo, personal=persona)
-            return Response({'success':'success'}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'error':'failed to create group: '+str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        serializer = CrearGrupoSerializer(data=request.data)
+
+        if serializer.is_valid():
+            valid_data = serializer.validated_data
+            try:
+                with transaction.atomic():
+                    grupo = GrupoPersonal.objects.create(nombre_grupo=valid_data['nombre_grupo'])
+                    for p_fk in valid_data['personal']:
+                        persona = Personal.objects.get(id=p_fk)
+                        SuscritosAGrupo.objects.create(grupo=grupo, personal=persona)
+                return Response({'success':'success'}, status=status.HTTP_201_CREATED)
+            except Personal.DoesNotExist:
+                return Response({'error':'FATAL ERROR!: personal does not exists'}, status=status.HTTP_404_NOT_FOUND)
+            except Exception:
+                return Response({'error':'FATAL ERROR!: Failed to create the group'}, status=status.HTTP_406_NOT_ACCEPTABLE)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     def patch(self, request):
-        data = request.data
-        try:
-            persona = get_object_or_404(Personal, id=data.get('p_id'))
-            grupo_to_update = get_object_or_404(GrupoPersonal,id=data.get('group_id'))
-            with transaction.atomic():
-                SuscritosAGrupo.objects.filter(
-                    grupo=grupo_to_update,
-                    personal=persona,
-                    fecha_salida=None
-                ).update(
-                    fecha_salida=timezone.now()
-                )
-            return Response({'success':'success'}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'error':'failed to update the group: '+str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        serializer = RemoverMiembroGrupo(data=request.data)
+
+
+        if serializer.is_valid():
+            valid_data = serializer.validated_data
+            try:
+                persona = get_object_or_404(Personal, id=valid_data['personal_id'])
+                grupo_to_update = get_object_or_404(GrupoPersonal,id=valid_data['group_id'])
+                with transaction.atomic():
+                    SuscritosAGrupo.objects.filter(
+                        grupo=grupo_to_update,
+                        personal=persona,
+                        fecha_salida=None
+                    ).update(
+                        fecha_salida=timezone.now()
+                    )
+                return Response({'success':'success'}, status=status.HTTP_200_OK)
+            except Exception:
+                return Response({'error':'FATAL ERROR!: failed to update the group'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
     def get(self, request):
         data = request.data
         query = SuscritosAGrupo.objects.filter(grupo_id=data.get('grupo_id'), fecha_salida=None).values(
@@ -213,38 +249,48 @@ class Grupos(APIView):
         )
 
         return Response(list(query), status=status.HTTP_200_OK)
+    
 class AddMemberToGroup(APIView):
     permission_classes = [ControlProfileOnly]
     def post(self, request):
-        data = request.data
-        try:
-            persona = get_object_or_404(Personal, id=data.get('p_id'))
-            grupo_to_update = get_object_or_404(GrupoPersonal, id=data.get('group_id'))
-            with transaction.atomic():
-                SuscritosAGrupo.objects.create(grupo=grupo_to_update, 
-                                               personal=persona, 
-                                               fecha_salida=None)
-            return Response({'success':'success'}, status=status.HTTP_201_CREATED)
-        except Exception as ta:
-            return Response({'error':str(ta)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = AgregarMiembroGrupo(data=request.data)
+
+        if serializer.validated_data():
+            valid_data = serializer.validated_data
+            try:
+                persona = get_object_or_404(Personal, id=valid_data['personal_id'])
+                grupo_to_update = get_object_or_404(GrupoPersonal, id=valid_data['grupo_id'])
+                with transaction.atomic():
+                    SuscritosAGrupo.objects.create(grupo=grupo_to_update, 
+                                                personal=persona, 
+                                                fecha_salida=None)
+                return Response({'success':'success'}, status=status.HTTP_201_CREATED)
+            except Exception:
+                return Response({'error':'FATAL ERROR! FAILED TO ADD MEMBER'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 #TODO:Creacion de la API para el registro de los pacientes
 class RegistrosPacientesAPI(APIView):
     def get_permissions(self):
         if self.request.method == 'GET':
-            return[AllowAny()]
+            return[WorkerProfileOnly()]
         return [ControlProfileOnly()]
 
     def post(self, request):
-        data = request.data
-        try:
-            Paciente.objects.create(rut=data.get('rut'),
-            nombre_completo=data.get('full_name'), fecha_nacimiento=data.get('date_birth'),
-            direccion=data.get('direccion'), condicion_paciente=data.get('condicion_paciente'),
-            telefono=data.get('telefono'), comuna=data.get('comuna'))
-            return Response({'success':'success'}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'error':str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        serializer = PacienteSerializer(data=request.data)
+        if serializer.is_valid():
+            valid_data = serializer.validated_data
+            try:
+                Paciente.objects.create(rut=valid_data['rut'],
+                nombre_completo=valid_data['full_name'], fecha_nacimiento=valid_data['date_birth'],
+                direccion=valid_data['direccion'], condicion_paciente=valid_data['condicion_paciente'],
+                telefono=valid_data['telefono'], comuna=valid_data['comuna'])
+                return Response({'success':'success'}, status=status.HTTP_200_OK)
+            except Exception:
+                return Response({'error':'FATAL ERROR! FAILED TO ADD PATIENT'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     def get(self, request):
         data = request.data
         if 'id' in data:
@@ -252,8 +298,8 @@ class RegistrosPacientesAPI(APIView):
                 paciente = get_object_or_404(Paciente,id=data.get('id'))
                 return Response(model_to_dict(paciente)
                                 , status=status.HTTP_200_OK)
-            except Exception as e:
-                return Response({'error':str(e)}, status=status.HTTP_200_OK)
+            except Exception:
+                return Response({'error':'failed to get data'}, status=status.HTTP_404_NOT_FOUND)
         else:
             pacientes = Paciente.objects.all().values(
                 'id', 'rut', 'nombre_completo', 'fecha_nacimiento',
@@ -267,31 +313,39 @@ class RegistrosPacientesAPI(APIView):
 class CreateDespacho(APIView):
     permission_classes = [ControlProfileOnly]
     def post(self, request):
-        data = request.data
-        try:
-            with transaction.atomic():
-                Despacho.objects.create( direccion_origen=data.get('d_o'),
-                direccion_destino=data.get('d_d'),descripcion_llamado=data.get('d_llamado'),
-                creado_por=request.user,estado='recibido')
-            return Response({'success':'success'}, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({'error':str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = DespachoSerializer(data=request.data)
+        if serializer.is_valid():
+            valid_data = serializer.validated_data
+            try:
+                with transaction.atomic():
+                    Despacho.objects.create( direccion_origen=valid_data['d_o'],
+                    direccion_destino=valid_data['d_d'],descripcion_llamado=valid_data['d_llamado'],
+                    creado_por=request.user,estado='recibido')
+                return Response({'success':'success'}, status=status.HTTP_201_CREATED)
+            except Exception:
+                return Response({'error':'FATAL ERROR NOT CREATED'}, status=status.HTTP_403_FORBIDDEN)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 class AsignarDespacho(APIView):
     permission_classes = [ControlProfileOnly]
     def patch(self, request):
-        data = request.data
-        try:
-            amb = get_object_or_404(Ambulancia, id=data.get('amb_id'))
-            with transaction.atomic():
-                Despacho.objects.filter(id=data.get('d_id')).update(
-                    fecha_asignacion=timezone.now(),asignado_por=request.user,
-                    ambulancia=amb, estado='asignado')
-                despacho=get_object_or_404(Despacho, id=data.get('d_id'))
-                grupo_asign=get_object_or_404(GrupoPersonal, id=data.get('group_id'))
-                DespachoPersonal.objects.create(despacho=despacho, grupo=grupo_asign)
-                return Response({'success':'success'},status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'error':str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = AsignarDespachoSerializer(data=request.data)
+        if serializer.is_valid():
+            valid_data = serializer.validated_data
+            try:
+                amb = get_object_or_404(Ambulancia, id=valid_data['amb_id'])
+                with transaction.atomic():
+                    Despacho.objects.filter(id=valid_data['d_id']).update(
+                        fecha_asignacion=timezone.now(),asignado_por=request.user,
+                        ambulancia=amb, estado='asignado')
+                    despacho=get_object_or_404(Despacho, id=valid_data['d_id'])
+                    grupo_asign=get_object_or_404(GrupoPersonal, id=valid_data['grupo_id'])
+                    DespachoPersonal.objects.create(despacho=despacho, grupo=grupo_asign)
+                    return Response({'success':'success'},status=status.HTTP_200_OK)
+            except Exception:
+                return Response({'error':'failed to assign'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 #TODO: Creacion de la API de logs para Auditorías -> para debatir
 #TODO: Creación de la API de exportación de las atenciones en formatio FHIR HL7
 #TODO: Creación de la API de tickets para recuperación de credenciales
@@ -354,8 +408,8 @@ class DespachoUsuarioAPI(APIView):
                 })
 
             return Response(resultado, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'error': str(e)},
+        except Exception:
+            return Response({'error': 'failed to get the data'},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -371,8 +425,8 @@ class AtencionAPI(APIView):
                 'id', 'fecha_registro', 'estado_sello'
             )
             return Response(list(atenciones), status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'error': str(e)},
+        except Exception:
+            return Response({'error': 'inner error'},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def post(self, request):
@@ -392,7 +446,7 @@ class AtencionAPI(APIView):
             return Response({'id': atencion.id},
                             status=status.HTTP_201_CREATED)
         except Exception as e:
-            return Response({'error': str(e)},
+            return Response({'error': 'inner error'},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -413,5 +467,5 @@ class AtencionDetalleAPI(APIView):
                 'datos_atencion': atencion.datos_atencion,
             }, status=status.HTTP_200_OK)
         except Exception as e:
-            return Response({'error': str(e)},
+            return Response({'error': 'inner error'},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
