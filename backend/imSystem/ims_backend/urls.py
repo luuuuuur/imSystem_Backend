@@ -10,6 +10,7 @@ urlpatterns = [
     path("api/despachos/asignar/",AsignarDespacho.as_view(), name="AsignarDespacho"),
     path("api/ambulancias/", AmbulanciaAPI.as_view(), name="AmbulanciaAPI"),
     path("api/atenciones/", AtencionAPI.as_view(), name="AtencionAPI"),
-    path("api/atenciones/<int:id>/", AtencionDetalleAPI.as_view(), name="AtencionDetalleAPI"),    
+    path("api/atenciones/<int:id>/", AtencionDetalleAPI.as_view(), name="AtencionDetalleAPI"),
+    path("api/register/worker/", DataPersonal.as_view(), name="DataPersonal"),
 ]
 

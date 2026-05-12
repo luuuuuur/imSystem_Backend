@@ -193,7 +193,7 @@ class SignosVitales(models.Model):
 class DetalleInsumoAtencion(models.Model):
     atencion = models.ForeignKey(Atencion, on_delete=models.CASCADE, related_name='insumos_utilizados')
     insumo = models.ForeignKey(InsumoMedico, on_delete=models.PROTECT)
-    dosis = models.DecimalField()
+    dosis = models.DecimalField(max_digits=10, decimal_places=1)
     observaciones = models.CharField(max_length=250, blank=True)
 
 

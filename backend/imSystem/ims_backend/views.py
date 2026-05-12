@@ -16,13 +16,13 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 import hashlib
 import json
 #---SERIALIZERS---
-from serializers import PersonalSerializer
-from serializers import CrearGrupoSerializer
-from serializers import RemoverMiembroGrupo
-from serializers import AgregarMiembroGrupo
-from serializers import PacienteSerializer
-from serializers import DespachoSerializer
-from serializers import AsignarDespachoSerializer
+from .serializers import PersonalSerializer
+from .serializers import CrearGrupoSerializer
+from .serializers import RemoverMiembroGrupo
+from .serializers import AgregarMiembroGrupo
+from .serializers import PacienteSerializer
+from .serializers import DespachoSerializer
+from .serializers import AsignarDespachoSerializer
 #---PERSONAL MODULES IMPORTS---
 from load_key import GLOBAL_PRIVATE_KEY
 from . import utils
@@ -67,7 +67,7 @@ class EnsureCsrfMixin:
 #----CLASS BASED VIEWS----
 class Login(EnsureCsrfMixin, APIView):
     #TODO: Implementacion de MFA con Google Authenticator (TOTP)
-    permission_classes = []
+    permission_classes = [AllowAny]
     def post(self, request):
         data_user = request.data.get('username')
         data_pass = request.data.get('password')
@@ -412,7 +412,7 @@ class DespachoUsuarioAPI(APIView):
             return Response({'error': 'failed to get the data'},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
+#1-1 m-1
 class AtencionAPI(APIView):
     def get(self, request):
         if not request.user.is_authenticated:
