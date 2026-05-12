@@ -58,6 +58,9 @@ if [ ! -f "${BASE_DIR}/install.txt" ]; then
     echo "ERROR: ${BASE_DIR}/install.txt no existe. No se pueden instalar dependencias."
     exit 1
 fi
+mkdir -p /var/ims/documentos
+chown "${BASE_USER}:${BASE_USER}" /var/ims/documentos
+chmod 750 /var/ims/documentos
 
 # ==FUNCIONES POR FAMILIA==
 
@@ -76,6 +79,9 @@ setup_debian() {
 server {
     listen 80;
     server_name ${SERVER_IP};
+    location /static/ {
+        alias ${APP_DIR}/staticfiles/;
+    }
     location / {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host \$host;
@@ -108,6 +114,9 @@ setup_redhat() {
 server {
     listen 80;
     server_name ${SERVER_IP};
+    location /static/ {
+        alias ${APP_DIR}/staticfiles/;
+    }
     location / {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host \$host;
@@ -152,6 +161,8 @@ fi
 
 echo "=== Instalando dependencias desde install.txt ==="
 "${BASE_DIR}/env/bin/pip" install -r "${BASE_DIR}/install.txt"
+echo "=== Generando archivos estáticos ==="
+"${BASE_DIR}/env/bin/python" "${APP_DIR}/manage.py" collectstatic --noinput
 # ==ENVIRONMENT FILE==
 if [ ! -f "${APP_DIR}/.mikufile" ]; then
     echo "ERROR: ${APP_DIR}/.mikufile no existe. Crea el archivo de variables de entorno antes de correr este script."
@@ -193,5 +204,4 @@ sudo systemctl start gunicorn || sudo systemctl restart gunicorn
 
 echo "=== Gunicorn status ==="
 sudo systemctl is-active gunicorn && echo "gunicorn: activo" || echo "WARN: gunicorn no está activo"
-
 echo "=== Deploy finalizado en $ID ($DISTRO_FAMILY) como usuario $BASE_USER ==="

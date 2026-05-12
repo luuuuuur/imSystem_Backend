@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from datetime import date
-
+from django.conf import settings
 
 class RolPersonal(models.Model):
     nombre_rol = models.CharField(max_length=50)  # medico, tens, chofer, control

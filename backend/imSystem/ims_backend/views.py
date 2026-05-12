@@ -2,7 +2,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.permissions import AllowAny
 #---DJANGO IMPORTS---
 from django.contrib.auth import authenticate, login
@@ -103,7 +103,7 @@ class Inventory(APIView):
 class AmbulanciaAPI(APIView):
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [WorkerProfileOnly()]
+            return [IsAuthenticated()]
         return [ControlProfileOnly()]
     
 
@@ -125,7 +125,7 @@ class DataPersonal(APIView):
         
 
         serializer = PersonalSerializer(personal_activo, many=True)
-        
+
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
@@ -183,7 +183,7 @@ class DocumentsAPI(APIView):
             sign = GLOBAL_PRIVATE_KEY.sign(bytes.fromhex(sha_256))
             data["Hash"] = str(sha_256)
             data["Firma"] = str(sign.hex())
-            #TODO: Preparar json para subir a S3
+            #TODO: Preparar json para guardarlo en ruta
             return Response({'success':'success'}, status=status.HTTP_200_OK)
         except Exception:
             return Response({'error': 'failed to save the file'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -354,7 +354,10 @@ class AsignarDespacho(APIView):
 
 # TESTING API DESPACHOS ASIGNADOS
 class DespachoUsuarioAPI(APIView):
-    permission_classes = [WorkerProfileOnly]
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
+        return[ControlProfileOnly()]
     def get(self, request):
         try:
             # buscar el grupo activo del usuario

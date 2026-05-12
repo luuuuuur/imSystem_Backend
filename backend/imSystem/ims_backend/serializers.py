@@ -8,7 +8,7 @@ from .models import (
 )
 
 class PersonalSerializer(serializers.ModelSerializer):
-    rol_nombre = serializers.CharField(source='rol.nombre_rol', read_only=True)
+    rol_nombre = serializers.CharField(source='rol.nombre_rol', read_only=True, default=None)
 
     class Meta:
         model = Personal
