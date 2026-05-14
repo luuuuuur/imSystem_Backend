@@ -34,8 +34,7 @@ from .serializers import PayloadSerializer
 from .serializers import ParamAtencionSerializer
 #---PERSONAL MODULES IMPORTS---
 from load_key import GLOBAL_PRIVATE_KEY
-from . import utils
-from utils import get_s3_download_url
+from .utils import(get_s3_download_url)
 #---MODELS IMPORTS---
 from .models import Personal
 from .models import Paciente
@@ -54,9 +53,8 @@ from .models import Documento
 from .models import DetalleInsumoAtencion
 
 #-----BOTO3----
-import boto3
 from botocore.exceptions import ClientError
-s3_client = boto3.client('s3', region_name=settings.AWS_S3_REGION_NAME)
+from .s3 import s3_client
 
 #---CLASS PERMISSION BASED---
 # Permiso custom: restringe acceso a usuarios con rol control
@@ -290,12 +288,12 @@ class RegistroAtencionAPI(APIView):
                     sha_256_hex = sha_256.hex()
                     sign = GLOBAL_PRIVATE_KEY.sign(sha_256)
                     firma_b64 = base64.b64encode(sign).decode('utf-8')
-                    document["Hash"]= sha_256_hex
-                    document["Firma"]= firma_b64
-
                     atencion.sello_electronico= f"{sha_256_hex}:{firma_b64}"
                     atencion.estado_sello="Firmado"
                     atencion.save(update_fields=["sello_electronico","estado_sello"])
+                    document["depsacho"] = model_to_dict(atencion)
+                    document["Hash"]= sha_256_hex
+                    document["Firma"]= firma_b64
                     s3_key_json = f"documentos/{sha_256_hex}.json"
                     s3_key_sig  = f"documentos/{sha_256_hex}.sig"
                     Documento.objects.create(archivo_s3_key=s3_key_json,

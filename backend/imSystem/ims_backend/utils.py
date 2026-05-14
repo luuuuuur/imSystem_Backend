@@ -1,7 +1,7 @@
 import pyotp
 import secrets
 import string
-from .views import s3_client
+from .s3 import s3_client
 from botocore.exceptions import ClientError
 from django.conf import settings
 
