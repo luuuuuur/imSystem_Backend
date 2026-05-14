@@ -112,7 +112,8 @@ class AgregarMiembroGrupo(serializers.Serializer):
 
 class ParamSerializer(serializers.Serializer):
     group_id=serializers.IntegerField(required=True)
-
+class ParamAtencionSerializer(serializers.Serializer):
+    id = serializers.IntegerField(required=True)
 class SignosVitalesSerializer(serializers.ModelSerializer):
     class Meta:
         model  = SignosVitales

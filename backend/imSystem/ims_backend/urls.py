@@ -11,7 +11,6 @@ urlpatterns = [
     path("api/despachos/get/", DespachoUsuarioAPI.as_view(), name="DespachoUsuarioAPI"),
     path("api/ambulancias/", AmbulanciaAPI.as_view(), name="AmbulanciaAPI"),
     path("api/atenciones/", AtencionAPI.as_view(), name="AtencionAPI"),
-    path("api/atenciones/<int:id>/", AtencionDetalleAPI.as_view(), name="AtencionDetalleAPI"),
     path("api/register/worker/", DataPersonal.as_view(), name="DataPersonal"),
     path("api/register/atencion/", RegistroAtencionAPI.as_view(), name="RegistroAtencionAPI"),
 ]

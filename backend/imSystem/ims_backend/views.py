@@ -31,9 +31,11 @@ from .serializers import AsignarDespachoSerializer
 from .serializers import ParamSerializer
 from .serializers import ParamPacienteSerializer
 from .serializers import PayloadSerializer
+from .serializers import ParamAtencionSerializer
 #---PERSONAL MODULES IMPORTS---
 from load_key import GLOBAL_PRIVATE_KEY
 from . import utils
+from utils import get_s3_download_url
 #---MODELS IMPORTS---
 from .models import Personal
 from .models import Paciente
@@ -53,6 +55,9 @@ from .models import DetalleInsumoAtencion
 
 #-----BOTO3----
 import boto3
+from botocore.exceptions import ClientError
+s3_client = boto3.client('s3', region_name=settings.AWS_S3_REGION_NAME)
+
 #---CLASS PERMISSION BASED---
 # Permiso custom: restringe acceso a usuarios con rol control
 # Usar en vistas donde solo personal de control debe operar (como por ejemplo asignar trabajores, despachos etc)
@@ -150,7 +155,7 @@ class DataPersonal(APIView):
         return [ControlProfileOnly()]
 
     def get(self, request):
-        personal_activo = Personal.objects.filter(is_active=True)
+        personal_activo = Personal.objects.filter(is_active=True).select_related('rol')
         
 
         serializer = PersonalSerializer(personal_activo, many=True)
@@ -238,9 +243,11 @@ class RegistroAtencionAPI(APIView):
                                                                 llegada_qth2=cronologia_data['llegada_qth2'],
                                                                 salida_qth2=cronologia_data['salida_qth2'],
                                                                 categoria=cronologia_data['categoria'])
+                    ids_insumos = [item['insumo_id'] for item in insumos_data]
+                    insumos_locked = {i.id: i for i in InsumoMedico.objects.select_for_update().filter(id__in=ids_insumos)}
+                    
                     for insumo_data in insumos_data:
-                        insumo = InsumoMedico.objects.select_for_update().get(id=insumo_data['insumo_id'])
-                        print(f"DEBUG stock={insumo.stock_total} dosis={insumo_data['dosis']} tipo_dosis={type(insumo_data['dosis'])}")
+                        insumo = insumos_locked[insumo_data['insumo_id']]
                         if insumo.stock_total < insumo_data['dosis']:
                             raise ValueError(f"Stock insuficiente para {insumo.nombre_insumo}")
                     for insumo_data in insumos_data:
@@ -282,10 +289,11 @@ class RegistroAtencionAPI(APIView):
                     sha_256 = hashlib.sha256(prepared_data.encode('utf-8')).digest()
                     sha_256_hex = sha_256.hex()
                     sign = GLOBAL_PRIVATE_KEY.sign(sha_256)
+                    firma_b64 = base64.b64encode(sign).decode('utf-8')
                     document["Hash"]= sha_256_hex
-                    document["Firma"]= base64.b64encode(sign).decode('utf-8')
+                    document["Firma"]= firma_b64
 
-                    atencion.sello_electronico= f"{sha_256_hex}:{base64.b64encode(sign).decode('utf-8')}"
+                    atencion.sello_electronico= f"{sha_256_hex}:{firma_b64}"
                     atencion.estado_sello="Firmado"
                     atencion.save(update_fields=["sello_electronico","estado_sello"])
                     s3_key_json = f"documentos/{sha_256_hex}.json"
@@ -299,7 +307,6 @@ class RegistroAtencionAPI(APIView):
             except Exception as e:
                 return Response({"error":str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             try:
-                s3_client = boto3.client('s3',region_name=settings.AWS_S3_REGION_NAME)
                 bucket_name = settings.AWS_STORAGE_BUCKET_NAME
                 file_json = json.dumps(document, ensure_ascii=False, cls=CustomEncoder)
                 s3_client.put_object(
@@ -339,9 +346,11 @@ class Grupos(APIView):
             try:
                 with transaction.atomic():
                     grupo = GrupoPersonal.objects.create(nombre_grupo=valid_data['nombre_grupo'])
-                    for p_fk in valid_data['personal']:
-                        persona = Personal.objects.get(id=p_fk)
-                        SuscritosAGrupo.objects.create(grupo=grupo, personal=persona)
+                    personas = Personal.objects.filter(id__in=valid_data['personal'])
+                    SuscritosAGrupo.objects.bulk_create([
+                        SuscritosAGrupo(grupo=grupo, personal=persona)
+                        for persona in personas
+                    ])
                 return Response({'success':'success'}, status=status.HTTP_201_CREATED)
             except Personal.DoesNotExist:
                 return Response({'error':'FATAL ERROR!: personal does not exists'}, status=status.HTTP_404_NOT_FOUND)
@@ -567,61 +576,24 @@ class DespachoUsuarioAPI(APIView):
         except Exception:
             return Response({'error': 'failed to get the data'},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-#1-1 m-1
 class AtencionAPI(APIView):
+    permission_classes=[IsAuthenticated]
+    
     def get(self, request):
-        if not request.user.is_authenticated:
-            return Response({'error': 'No autenticado'},
-                            status=status.HTTP_401_UNAUTHORIZED)
-        try:
-            atenciones = Atencion.objects.filter(
-                registrado_por=request.user
-            ).order_by('-fecha_registro').values(
-                'id', 'fecha_registro', 'estado_sello'
-            )
-            return Response(list(atenciones), status=status.HTTP_200_OK)
-        except Exception:
-            return Response({'error': 'inner error'},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def post(self, request):
-        if not request.user.is_authenticated:
-            return Response({'error': 'No autenticado'},
-                            status=status.HTTP_401_UNAUTHORIZED)
-        try:
-            data = request.data
-            despacho_id = data.get('despachoId')
-            despacho = get_object_or_404(
-                Despacho, id=despacho_id) if despacho_id else None
-            atencion = Atencion.objects.create(
-                registrado_por=request.user,
-                despacho=despacho,
-                datos_atencion=data,
-            )
-            return Response({'id': atencion.id},
-                            status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({'error': 'inner error'},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class AtencionDetalleAPI(APIView):
-    def get(self, request, id):
-        if not request.user.is_authenticated:
-            return Response({'error': 'No autenticado'},
-                            status=status.HTTP_401_UNAUTHORIZED)
-        try:
-            atencion = get_object_or_404(
-                Atencion,
-                id=id,
-                registrado_por=request.user
-            )
-            return Response({
-                'id': atencion.id,
-                'fecha_registro': atencion.fecha_registro,
-                'datos_atencion': atencion.datos_atencion,
-            }, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'error': 'inner error'},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        if request.query_params:
+            serializer = ParamAtencionSerializer(data=request.query_params)
+            if serializer.is_valid():
+                valid_data=serializer.validated_data
+                try:
+                    atencion =  get_object_or_404(Atencion, id=valid_data['id'])
+                    document = atencion.documentos.first()
+                    if not document:
+                        return Response({'error': 'No document found for this atencion'}, status=status.HTTP_404_NOT_FOUND)
+                    response = get_s3_download_url(document.archivo_s3_key, 3600)
+                    return Response({"success":f"{response}"}, status=status.HTTP_200_OK)
+                except ClientError:
+                    return Response({"error":"failed to generate the url"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(list(Atencion.objects.select_related('paciente').all().values('id', 'hora_salida', 'hora_llegada', 'estado_sello', 'paciente__nombre_completo')), status=status.HTTP_200_OK)
