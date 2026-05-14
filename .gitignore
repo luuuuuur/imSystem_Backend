@@ -18,6 +18,10 @@ backend/imSystem/db.sqlite3
 backend/staticfiles/
 #tests
 backend/imSystem/seed.py
+#garbage
+todos.txt
+cookies.txt
+*.json
 ########FIN BACKEND###########
 
 

@@ -2,7 +2,6 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from datetime import date
 from django.conf import settings
-
 class RolPersonal(models.Model):
     nombre_rol = models.CharField(max_length=50)  # medico, tens, chofer, control
 
@@ -96,9 +95,6 @@ class Despacho(models.Model):
     ESTADOS = [
         ('recibido', 'Recibido en control'),
         ('asignado', 'Asignado a equipo'),
-        ('en_ruta_paciente', 'En ruta al paciente'),
-        ('paciente_recogido', 'Paciente recogido'),
-        ('en_ruta_hospital', 'En ruta al hospital'),
         ('finalizado', 'Finalizado'),
         ('cancelado', 'Cancelado'),
     ]
@@ -172,7 +168,6 @@ class Atencion(models.Model):
     def __str__(self):
         return f"Atención {self.id} - {self.paciente.nombre_completo}"
 
-
 class SignosVitales(models.Model):
     atencion = models.ForeignKey(Atencion, on_delete=models.CASCADE, related_name='signos_vitales')
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -181,6 +176,12 @@ class SignosVitales(models.Model):
     frecuencia_cardiaca = models.IntegerField(null=True, blank=True)
     saturacion_oxigeno = models.IntegerField(null=True, blank=True)
     temperatura = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    fr = models.IntegerField(null=True, blank=True)
+    fio2 = models.IntegerField(null=True, blank=True)
+    hgt = models.IntegerField(null=True, blank=True)
+    gcs = models.IntegerField(null=True, blank=True)
+    eva = models.IntegerField(null=True, blank=True)
+    hora = models.CharField(max_length=4, null=False, blank=False, default="0000")
     observaciones = models.TextField(blank=True)
 
     class Meta:
@@ -202,7 +203,7 @@ class DetalleInsumoAtencion(models.Model):
 
 
 class Documento(models.Model):
-    archivo_s3_key = models.CharField(max_length=500, help_text="Ruta del archivo dentro del bucket S3")
+    archivo_s3_key = models.CharField(max_length=500, help_text="Ruta del archivo")
     archivo_hash = models.CharField(
         max_length=64,
         unique=True,
@@ -212,7 +213,6 @@ class Documento(models.Model):
     firma_s3_key = models.CharField(max_length=500, blank=True, help_text="Ruta de la firma .sig en S3")
     atencion = models.ForeignKey(Atencion, on_delete=models.PROTECT, related_name='documentos', null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
     def __str__(self):
         return f"Documento {self.id} - {self.archivo_hash[:16]}..."
 
@@ -318,3 +318,19 @@ class DeviceToken(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return f"device token: {self.device_token}, user: {self.usuario}, created at: {self.created_at}"
+    
+class PreInforme(models.Model):
+    atencion = models.OneToOneField(Atencion,on_delete=models.CASCADE, related_name="preinforme_atencion")
+    pre_informe= models.CharField(max_length=250, null=True, blank=True)
+    motivo_llamado = models.CharField(max_length=150, null=True, blank=True)
+    estado_paciente = models.CharField(max_length=150, null=True, blank=True)
+
+class Cronologia(models.Model):
+    atencion = models.OneToOneField(Atencion, on_delete=models.CASCADE, related_name="crono_atencion")
+    hora_llamada = models.CharField(max_length=4, null=True, blank=True)
+    despacho_movil = models.CharField(max_length=4, null=True, blank=True)
+    llegada_qth1  = models.CharField(max_length=4, null=True, blank=True)
+    salida_qth1  = models.CharField(max_length=4, null=True, blank=True)
+    llegada_qth2  = models.CharField(max_length=4, null=True, blank=True)
+    salida_qth2  = models.CharField(max_length=4, null=True, blank=True)
+    categoria = models.CharField(max_length=2, null=False, blank=False)

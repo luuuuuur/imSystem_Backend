@@ -7,3 +7,4 @@ gunicorn
 django-storages[s3]
 pyotp
 django-cors-headers
+boto3

@@ -54,7 +54,11 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+}
 ROOT_URLCONF = 'backend_config.urls'
 
 TEMPLATES = [
@@ -148,11 +152,16 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 3
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_SAVE_EVERY_REQUEST = True
-EXPORT__dir__docs = os.getenv("UPLOAD_TO")
+IMS_DOCUMENTOS_DIR = os.getenv("UPLOAD_TO")
 #DISCOMMENT THIS WHEN TO DEOPLOY IN PROD
 #SESSION_COOKIE_SECURE =True
 #SESSION_COOKIE_HTTPONLY =True
 #CSFR_COOKIE_SECURE=True
 
 
-
+#AMAZON
+AWS_ACCESS_KEY_ID     = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
+AWS_S3_REGION_NAME    = os.environ.get('AWS_S3_REGION_NAME')
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'

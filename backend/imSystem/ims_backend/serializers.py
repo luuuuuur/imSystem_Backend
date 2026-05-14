@@ -4,7 +4,8 @@ from rest_framework import serializers
 # ---- MODELS ----
 from .models import (
     Paciente, Ambulancia, Personal, Despacho,
-    Atencion, GrupoPersonal, SuscritosAGrupo
+    Atencion, GrupoPersonal, SuscritosAGrupo, SignosVitales, PreInforme,
+    Cronologia
 )
 
 class PersonalSerializer(serializers.ModelSerializer):
@@ -26,8 +27,8 @@ class PacienteSerializer(serializers.ModelSerializer):
             'id', 'rut', 'full_name', 'date_birth',
             'direccion', 'condicion_paciente', 'telefono', 'comuna'
         ]
-
-
+class ParamPacienteSerializer(serializers.Serializer):
+    rut = serializers.CharField(max_length=12, required=True)
 
 class DespachoSerializer(serializers.ModelSerializer):
     d_o      = serializers.CharField(source='direccion_origen')
@@ -57,6 +58,7 @@ class AtencionSerializer(serializers.ModelSerializer):
         model  = Atencion
         fields = '__all__'
         read_only_fields = ['sello_electronico', 'estado_sello']
+#class PayloadSerializer(serializers.Serializer):
 
 
 class MiembroGrupoSerializer(serializers.ModelSerializer):
@@ -104,5 +106,42 @@ class RemoverMiembroGrupo(serializers.Serializer):
 
 
 class AgregarMiembroGrupo(serializers.Serializer):
-    group_id    = serializers.IntegerField()
+    grupo_id    = serializers.IntegerField()
     personal_id = serializers.IntegerField()
+
+
+class ParamSerializer(serializers.Serializer):
+    group_id=serializers.IntegerField(required=True)
+
+class SignosVitalesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = SignosVitales
+        exclude = ['atencion','timestamp']
+
+class PreInformeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PreInforme
+        exclude = ['atencion']
+
+class CronologiaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Cronologia
+        exclude = ['atencion']
+
+class DespachoAtencionSerializer(serializers.Serializer):
+    despacho_id = serializers.IntegerField(required=True)
+    paciente_id = serializers.IntegerField(required=True)
+    ambulancia_id = serializers.IntegerField( required=True)
+    direccion_despacho = serializers.CharField(required=True)
+    hora_salida = serializers.DateTimeField(required=True)
+    hora_llegada = serializers.DateTimeField(required=True)
+class InsumoUtilizadoSerializer(serializers.Serializer):
+    insumo_id = serializers.IntegerField()
+    dosis=serializers.DecimalField(max_digits=10, decimal_places=1)
+    observaciones = serializers.CharField(max_length=255, required=False)
+class PayloadSerializer(serializers.Serializer):
+    despacho = DespachoAtencionSerializer()
+    signos_vitales = SignosVitalesSerializer(many=True)
+    preinforme = PreInformeSerializer()
+    cronologia = CronologiaSerializer()
+    insumos_utilizados = InsumoUtilizadoSerializer(many=True)

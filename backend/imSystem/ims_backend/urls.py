@@ -13,5 +13,6 @@ urlpatterns = [
     path("api/atenciones/", AtencionAPI.as_view(), name="AtencionAPI"),
     path("api/atenciones/<int:id>/", AtencionDetalleAPI.as_view(), name="AtencionDetalleAPI"),
     path("api/register/worker/", DataPersonal.as_view(), name="DataPersonal"),
+    path("api/register/atencion/", RegistroAtencionAPI.as_view(), name="RegistroAtencionAPI"),
 ]
 
