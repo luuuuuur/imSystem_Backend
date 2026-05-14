@@ -22,6 +22,9 @@ backend/imSystem/seed.py
 todos.txt
 cookies.txt
 *.json
+*.pem
+password.txt
+error.txt
 ########FIN BACKEND###########
 
 
