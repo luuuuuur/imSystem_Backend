@@ -119,8 +119,8 @@ class Login(EnsureCsrfMixin, APIView):
                 return Response({'success':'success', 'role': user.rol.nombre_rol}, status=status.HTTP_200_OK)
         except ValueError:
             return Response({'error':'wrong values check again'}, status=status.HTTP_401_UNAUTHORIZED)
-        except Exception:
-            return Response({'error':'inner error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 

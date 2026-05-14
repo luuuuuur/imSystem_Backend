@@ -10,6 +10,7 @@ urlpatterns = [
     path("api/despachos/asignar/",AsignarDespacho.as_view(), name="AsignarDespacho"),
     path("api/despachos/get/", DespachoUsuarioAPI.as_view(), name="DespachoUsuarioAPI"),
     path("api/ambulancias/", AmbulanciaAPI.as_view(), name="AmbulanciaAPI"),
+    path("api/despachos/",DespachoUsuarioAPI.as_view(), name="DespachoUsuarioAPI"),
     path("api/atenciones/", AtencionAPI.as_view(), name="AtencionAPI"),
     path("api/register/worker/", DataPersonal.as_view(), name="DataPersonal"),
     path("api/register/atencion/", RegistroAtencionAPI.as_view(), name="RegistroAtencionAPI"),
