@@ -34,7 +34,7 @@ from .serializers import PayloadSerializer
 from .serializers import ParamAtencionSerializer
 #---PERSONAL MODULES IMPORTS---
 from load_key import GLOBAL_PRIVATE_KEY
-from .utils import(get_s3_download_url)
+from .utils import(get_s3_download_url, generate_totp, generate_password)
 #---MODELS IMPORTS---
 from .models import Personal
 from .models import Paciente
@@ -176,8 +176,8 @@ class DataPersonal(APIView):
                 rol_id = request.data.get("rol_id")
                 rol = get_object_or_404(RolPersonal, id=rol_id)
 
-                key, totp = utils.generate_totp()
-                temp = utils.generate_password()
+                key, totp = generate_totp()
+                temp = generate_password()
                 uri = totp.provisioning_uri(name=rut, issuer_name='IMS Sistema')
                 
                
@@ -291,7 +291,7 @@ class RegistroAtencionAPI(APIView):
                     atencion.sello_electronico= f"{sha_256_hex}:{firma_b64}"
                     atencion.estado_sello="Firmado"
                     atencion.save(update_fields=["sello_electronico","estado_sello"])
-                    document["depsacho"] = model_to_dict(atencion)
+                    document["despacho"] = model_to_dict(atencion)
                     document["Hash"]= sha_256_hex
                     document["Firma"]= firma_b64
                     s3_key_json = f"documentos/{sha_256_hex}.json"
