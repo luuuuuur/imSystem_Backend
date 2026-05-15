@@ -1,26 +1,29 @@
-#---DJANGO REST FRAMEWORK IMPORTS-----
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
+# ─── DJANGO REST FRAMEWORK ───────────────────────────────────────────────────
+from rest_framework.views       import APIView
+from rest_framework.response    import Response
+from rest_framework             import status
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.permissions import AllowAny
-#---DJANGO IMPORTS---
-from django.contrib.auth import authenticate, login
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
-from django.db import transaction
-from django.forms.models import model_to_dict
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import ensure_csrf_cookie
-from django.conf import settings
-from django.db.models import F
-#---PYTHON INCLUDES IMPORTS---
+
+# ─── DJANGO ──────────────────────────────────────────────────────────────────
+from django.contrib.auth            import authenticate, login
+from django.shortcuts               import get_object_or_404
+from django.utils                   import timezone
+from django.db                      import transaction
+from django.forms.models            import model_to_dict
+from django.utils.decorators        import method_decorator
+from django.views.decorators.csrf   import ensure_csrf_cookie
+from django.conf                    import settings
+from django.db.models               import F
+
+# ─── STDLIB ──────────────────────────────────────────────────────────────────
 import hashlib
 import json
 import decimal
 import datetime
 import base64
-#---SERIALIZERS---
+
+# ─── SERIALIZERS ─────────────────────────────────────────────────────────────
 from .serializers import PersonalSerializer
 from .serializers import CrearGrupoSerializer
 from .serializers import RemoverMiembroGrupo
@@ -33,10 +36,8 @@ from .serializers import ParamPacienteSerializer
 from .serializers import PayloadSerializer
 from .serializers import ParamAtencionSerializer
 from .serializers import ObtenerDespachoSerializer
-#---PERSONAL MODULES IMPORTS---
-from load_key import GLOBAL_PRIVATE_KEY
-from .utils import(get_s3_download_url, generate_totp, generate_password)
-#---MODELS IMPORTS---
+
+# ─── MODELS ──────────────────────────────────────────────────────────────────
 from .models import Personal
 from .models import Paciente
 from .models import SuscritosAGrupo
@@ -53,38 +54,54 @@ from .models import InsumoMedico
 from .models import Documento
 from .models import DetalleInsumoAtencion
 
-#-----BOTO3----
+# ─── LOCAL / AWS ─────────────────────────────────────────────────────────────
+from load_key            import GLOBAL_PRIVATE_KEY
+from .utils              import(get_s3_download_url, generate_totp, generate_password)
 from botocore.exceptions import ClientError
-from .s3 import s3_client
+from .s3                 import s3_client
 
-#---CLASS PERMISSION BASED---
+
+# =============================================================================
+# PERMISOS PERSONALIZADOS
+# =============================================================================
+
 # Permiso custom: restringe acceso a usuarios con rol control
 # Usar en vistas donde solo personal de control debe operar (como por ejemplo asignar trabajores, despachos etc)
 class ControlProfileOnly(BasePermission):
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated and request.user.rol and request.user.rol.nombre_rol == 'control')
+
+
 class MedicProfileOnly(BasePermission):
     def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and request.user.rol and request.user.rol.nombre_rol == 'medic')    
+        return bool(request.user and request.user.is_authenticated and request.user.rol and request.user.rol.nombre_rol == 'medic')
+
+
 class NurseProfileOnly(BasePermission):
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated and request.user.rol and request.user.rol.nombre_rol == 'nurse')
-    
+
+
 class DriverProfileOnly(BasePermission):
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated and request.user.rol and request.user.rol.nombre_rol == 'driver')
+
 
 class WorkerProfileOnly(BasePermission):
     def has_permission(self, request,view):
         return bool(request.user.is_authenticated and request.user.rol and request.user.rol.nombre_rol in ['medic', 'nurse', 'driver'])
 
 
-#--CSRF TOKEN METHOD CLASS---
+# =============================================================================
+# UTILIDADES
+# =============================================================================
+
 class EnsureCsrfMixin:
     @method_decorator(ensure_csrf_cookie)
     def dispatch(self, *args, **kwargs):
         return super().dispatch(*args, **kwargs)
-#----ENCODER---
+
+
 class CustomEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, decimal.Decimal):
@@ -92,14 +109,20 @@ class CustomEncoder(json.JSONEncoder):
         if isinstance(obj, (datetime.datetime, datetime.date)):
             return obj.isoformat()
         return super().default(obj)
-#----CLASS BASED VIEWS----
 
-#API para INICIAR sesion en la aplicacion
+
+# =============================================================================
+# VISTAS
+# =============================================================================
+
+# API para INICIAR sesion en la aplicacion
 class Login(EnsureCsrfMixin, APIView):
     #TODO: Implementacion de MFA con Google Authenticator (TOTP)
     permission_classes = [AllowAny]
+
     def get(self, request):
         return Response({}, status=status.HTTP_200_OK)
+
     def post(self, request):
         data_user = request.data.get('username')
         data_pass = request.data.get('password')
@@ -126,28 +149,25 @@ class Login(EnsureCsrfMixin, APIView):
                 return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
-
+# ─── TODO ─────────────────────────────────────────────────────────────────────
 #TODO: Creacion de la api para cargar y actualizar datos del inventario
 class Inventory(APIView):
     permission_classes  = [ControlProfileOnly]
 
 
-
-#API para OBTENER las ambulancias
+# API para OBTENER las ambulancias
 class AmbulanciaAPI(APIView):
     def get_permissions(self):
         if self.request.method == 'GET':
             return [IsAuthenticated()]
         return [ControlProfileOnly()]
-    
 
     def get(self, request):
         data_ambulancias = Ambulancia.objects.all().values('id', 'patente','modelo','estado_disponibilidad')
         return Response(list(data_ambulancias), status=status.HTTP_200_OK)
 
 
-#API para OBTENER datos del personal
+# API para OBTENER datos del personal
 class DataPersonal(APIView):
     def get_permissions(self):
         # Paréntesis agregados para instanciar las clases correctamente
@@ -205,13 +225,17 @@ class DataPersonal(APIView):
                 return Response({'error': 'failed to generate the uri and user data'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+# ─── TODO ─────────────────────────────────────────────────────────────────────
 #TODO: Creacion de la validación del TOTP (MFA)
 #TODO: Creación de la API de notificaciones -> SSE
 #TODO: Creación de la API para carga de documentos y descarga de documentos (SOLO lectura, generar un QR desde HASH) -> prioridad
 
-#API para REGISTRAR las atenciones post-despacho y subir los documentos firmados al S3
+
+# API para REGISTRAR las atenciones post-despacho y subir los documentos firmados al S3
 class RegistroAtencionAPI(APIView):
     permission_classes = [WorkerProfileOnly]
+
     def post(self,request):
         serializer = PayloadSerializer(data= request.data)
         if serializer.is_valid():
@@ -331,12 +355,13 @@ class RegistroAtencionAPI(APIView):
             return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
 
 
-#API para creacion de GRUPOS de trabajo
+# API para creacion de GRUPOS de trabajo
 class Grupos(APIView):
     def get_permissions(self):
         if self.request.method == 'GET':
             return[IsAuthenticated()]
         return [ControlProfileOnly()]
+
     def post(self, request):
         serializer = CrearGrupoSerializer(data=request.data)
 
@@ -396,10 +421,12 @@ class Grupos(APIView):
                     'personal__id', 'personal__first_name','personal__last_name','personal__rut','personal__rol__nombre_rol'
                 )
             return Response(list(query), status=status.HTTP_200_OK)
-        
-#API para AÑADIR miembros a grupos YA EXISTENTES
+
+
+# API para AÑADIR miembros a grupos YA EXISTENTES
 class AddMemberToGroup(APIView):
     permission_classes = [ControlProfileOnly]
+
     def post(self, request):
         serializer = AgregarMiembroGrupo(data=request.data)
         if serializer.is_valid():
@@ -420,7 +447,8 @@ class AddMemberToGroup(APIView):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-#API para el registro de los pacientes
+
+# API para el registro de los pacientes
 class RegistrosPacientesAPI(APIView):
     def get_permissions(self):
         if self.request.method == 'GET':
@@ -441,6 +469,7 @@ class RegistrosPacientesAPI(APIView):
                 return Response({'error':'FATAL ERROR! FAILED TO ADD PATIENT'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     def get(self, request):
         if request.query_params:
             serialize = ParamPacienteSerializer(data=request.query_params)
@@ -461,12 +490,16 @@ class RegistrosPacientesAPI(APIView):
                 )
             return Response(list(pacientes), status=status.HTTP_200_OK)
 
+
+# ─── TODO ─────────────────────────────────────────────────────────────────────
 #TODO: Creación de la API para los estados de los usuarios (en turno, disponible, fuera de servicio)
 #TODO: Creación de la API para la gestión de los datos de los pacientes(para cargar al documento)
 
-#API para CREAR los despachos
+
+# API para CREAR los despachos
 class CreateDespacho(APIView):
     permission_classes = [ControlProfileOnly]
+
     def post(self, request):
         serializer = DespachoSerializer(data=request.data)
         if serializer.is_valid():
@@ -485,9 +518,12 @@ class CreateDespacho(APIView):
                 return Response({'error':f'FATAL ERROR NOT CREATED:{e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-#API para asignar los despachos a un grupo previamente creado y existente
+
+
+# API para asignar los despachos a un grupo previamente creado y existente
 class AsignarDespacho(APIView):
     permission_classes = [ControlProfileOnly]
+
     def patch(self, request):
         serializer = AsignarDespachoSerializer(data=request.data)
         if serializer.is_valid():
@@ -506,12 +542,12 @@ class AsignarDespacho(APIView):
                 return Response({'error':'failed to assign'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
 
 
-#API para obtener TODOS Los despachos sin necesidad de incluir al usuario per se
+# API para obtener TODOS Los despachos sin necesidad de incluir al usuario per se
 class AllDespachos(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request):
         if request.query_params:
             serializer = ObtenerDespachoSerializer(data=request.query_params)
@@ -588,16 +624,21 @@ class AllDespachos(APIView):
                 })
 
             return Response(resultado, status=status.HTTP_200_OK)
+
+
+# ─── TODO ─────────────────────────────────────────────────────────────────────
 #TODO: Creacion de la API de logs para Auditorías -> para debatir
 #TODO: Creación de la API de exportación de las atenciones en formatio FHIR HL7
 #TODO: Creación de la API de tickets para recuperación de credenciales
 
-#API para retornar el despacho asignado al USUARIO LOGEADO AL MOMENTO DE HACER LA SOLICITUD, diferenciar de arriba que retorna todos los despachos
+
+# API para retornar el despacho asignado al USUARIO LOGEADO AL MOMENTO DE HACER LA SOLICITUD, diferenciar de arriba que retorna todos los despachos
 class DespachoASolicitudUsuario(APIView):
     def get_permissions(self):
         if self.request.method == 'GET':
             return [IsAuthenticated()]
         return[ControlProfileOnly()]
+
     def get(self, request):
         try:
             # buscar el grupo activo del usuario
@@ -663,9 +704,11 @@ class DespachoASolicitudUsuario(APIView):
             return Response({'error': 'failed to get the data'},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-#API para retornar las atenciones, recibe parámetros a través de URL
+
+# API para retornar las atenciones, recibe parámetros a través de URL
 class AtencionAPI(APIView):
     permission_classes=[IsAuthenticated]
+
     def get(self, request):
         if request.query_params:
             serializer = ParamAtencionSerializer(data=request.query_params)
