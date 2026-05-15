@@ -330,7 +330,7 @@ class RegistroAtencionAPI(APIView):
 class Grupos(APIView):
     def get_permissions(self):
         if self.request.method == 'GET':
-            return[WorkerProfileOnly()]
+            return[IsAuthenticated()]
         return [ControlProfileOnly()]
     
 
@@ -349,7 +349,7 @@ class Grupos(APIView):
                         SuscritosAGrupo(grupo=grupo, personal=persona)
                         for persona in personas
                     ])
-                return Response({'success':'success'}, status=status.HTTP_201_CREATED)
+                return Response({'success':'success', 'group_id': grupo.id}, status=status.HTTP_201_CREATED)
             except Personal.DoesNotExist:
                 return Response({'error':'FATAL ERROR!: personal does not exists'}, status=status.HTTP_404_NOT_FOUND)
             except Exception:
@@ -471,10 +471,10 @@ class CreateDespacho(APIView):
             valid_data = serializer.validated_data
             try:
                 with transaction.atomic():
-                    Despacho.objects.create( direccion_origen=valid_data['d_o'],
+                    despacho = Despacho.objects.create( direccion_origen=valid_data['d_o'],
                     direccion_destino=valid_data['d_d'],descripcion_llamado=valid_data['d_llamado'],
                     creado_por=request.user,estado='recibido')
-                return Response({'success':'success'}, status=status.HTTP_201_CREATED)
+                return Response({'success':'success', 'despacho_id':despacho.id}, status=status.HTTP_201_CREATED)
             except Exception:
                 return Response({'error':'FATAL ERROR NOT CREATED'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
