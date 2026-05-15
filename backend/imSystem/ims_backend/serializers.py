@@ -52,6 +52,8 @@ class AmbulanciaSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class ObtenerDespachoSerializer(serializers.Serializer):
+    despacho_id = serializers.IntegerField()
 
 class AtencionSerializer(serializers.ModelSerializer):
     class Meta:

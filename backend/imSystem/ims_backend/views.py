@@ -32,6 +32,7 @@ from .serializers import ParamSerializer
 from .serializers import ParamPacienteSerializer
 from .serializers import PayloadSerializer
 from .serializers import ParamAtencionSerializer
+from .serializers import ObtenerDespachoSerializer
 #---PERSONAL MODULES IMPORTS---
 from load_key import GLOBAL_PRIVATE_KEY
 from .utils import(get_s3_download_url, generate_totp, generate_password)
@@ -503,6 +504,81 @@ class AsignarDespacho(APIView):
                 return Response({'error':'failed to assign'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+
+
+
+class AllDespachos(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        if request.query_params:
+            serializer = ObtenerDespachoSerializer(data=request.query_params)
+            if serializer.is_valid():
+                valid_data = serializer.validated_data
+                despacho = Despacho.objects.filter(
+                    id=valid_data['despacho_id']
+                ).exclude(estado__in=['finalizado', 'cancelado']).first()
+
+                if not despacho:
+                    return Response({'error': 'Despacho no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
+                despacho_personal = DespachoPersonal.objects.filter(despacho=despacho).first()
+                personal = []
+                if despacho_personal:
+                    personal = list(SuscritosAGrupo.objects.filter(
+                        grupo=despacho_personal.grupo,
+                        fecha_salida=None
+                    ).values(
+                        'personal__id', 'personal__first_name',
+                        'personal__last_name', 'personal__rut',
+                        'personal__rol__nombre_rol'
+                    ))
+
+                resultado = {
+                    'id': despacho.id,
+                    'estado': despacho.estado,
+                    'direccion_origen': despacho.direccion_origen,
+                    'direccion_destino': despacho.direccion_destino,
+                    'descripcion_llamado': despacho.descripcion_llamado,
+                    'fecha_llamado': despacho.fecha_llamado,
+                    'fecha_asignacion': despacho.fecha_asignacion,
+                    'ambulancia_id': despacho.ambulancia_id,
+                    'creado_por_id': despacho.creado_por_id,
+                    'asignado_por_id': despacho.asignado_por_id,
+                    'personal': personal
+                }
+                return Response(resultado, status=status.HTTP_200_OK)
+            else:
+                return Response(serializer.errors, status=status.HTTP_404_NOT_FOUND)
+        else:
+            despachos = Despacho.objects.exclude(
+                    estado__in=['finalizado', 'cancelado']
+                ).select_related('ambulancia', 'creado_por', 'asignado_por')
+            resultado = []
+            for d in despachos:
+                dp = DespachoPersonal.objects.filter(despacho=d).first()
+                personal = []
+                if dp:
+                    personal = list(SuscritosAGrupo.objects.filter(
+                        grupo=dp.grupo,
+                        fecha_salida=None
+                    ).values(
+                        'personal__id', 'personal__first_name',
+                        'personal__last_name', 'personal__rut',
+                        'personal__rol__nombre_rol'
+                    ))
+                resultado.append({
+                    'id': d.id,
+                    'estado': d.estado,
+                    'direccion_origen': d.direccion_origen,
+                    'direccion_destino': d.direccion_destino,
+                    'descripcion_llamado': d.descripcion_llamado,
+                    'fecha_llamado': d.fecha_llamado,
+                    'fecha_asignacion': d.fecha_asignacion,
+                    'ambulancia_id': d.ambulancia_id,
+                    'personal': personal
+                })
+            return Response(resultado, status=status.HTTP_200_OK)
 #TODO: Creacion de la API de logs para Auditorías -> para debatir
 #TODO: Creación de la API de exportación de las atenciones en formatio FHIR HL7
 #TODO: Creación de la API de tickets para recuperación de credenciales
