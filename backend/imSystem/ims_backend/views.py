@@ -726,4 +726,7 @@ class AtencionAPI(APIView):
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         else:
-            return Response(list(Atencion.objects.select_related('paciente').all().values('id', 'hora_salida', 'hora_llegada', 'estado_sello', 'paciente__nombre_completo')), status=status.HTTP_200_OK)
+            return Response(list(Atencion.objects.select_related('paciente')
+                                 .all()
+                                 .values('id', 'hora_salida', 'hora_llegada', 'estado_sello', 'paciente__nombre_completo')), 
+                                 status=status.HTTP_200_OK)
