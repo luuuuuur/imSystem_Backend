@@ -149,7 +149,7 @@ class DataPersonal(APIView):
     def get_permissions(self):
         # Paréntesis agregados para instanciar las clases correctamente
         if self.request.method == 'GET':
-            return [WorkerProfileOnly()]
+            return [IsAuthenticated()]
         return [ControlProfileOnly()]
 
     def get(self, request):
