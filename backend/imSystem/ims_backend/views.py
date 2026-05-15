@@ -582,15 +582,6 @@ class AllDespachos(APIView):
 #TODO: Creacion de la API de logs para Auditorías -> para debatir
 #TODO: Creación de la API de exportación de las atenciones en formatio FHIR HL7
 #TODO: Creación de la API de tickets para recuperación de credenciales
-
-
-
-
-
-
-
-
-
 #IGNORAR DE AQUI PARA ABAJO
 # TESTING API DESPACHOS ASIGNADOS
 class DespachoUsuarioAPI(APIView):
