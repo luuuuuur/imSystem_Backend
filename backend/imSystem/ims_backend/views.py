@@ -386,7 +386,7 @@ class Grupos(APIView):
 
             if serializer.is_valid():
                 valid_data = serializer.validated_data
-                query = SuscritosAGrupo.objects.filter(grupo_id=valid_data['group_id'], fecha_salida=None).values(
+                query = SuscritosAGrupo.objects.filter(grupo_id=valid_data['group_id'], fecha_salida=None).values('id',
                     'personal__id', 'personal__first_name','personal__last_name','personal__rut','personal__rol__nombre_rol'
                 )
                 return Response(list(query), status=status.HTTP_200_OK)
@@ -471,12 +471,16 @@ class CreateDespacho(APIView):
             valid_data = serializer.validated_data
             try:
                 with transaction.atomic():
-                    despacho = Despacho.objects.create( direccion_origen=valid_data['d_o'],
-                    direccion_destino=valid_data['d_d'],descripcion_llamado=valid_data['d_llamado'],
-                    creado_por=request.user,estado='recibido')
+                    despacho = Despacho.objects.create(
+                        direccion_origen=valid_data['direccion_origen'],
+                        direccion_destino=valid_data['direccion_destino'],
+                        descripcion_llamado=valid_data['descripcion_llamado'],
+                        creado_por=request.user,
+                        estado='recibido'
+                    )
                 return Response({'success':'success', 'despacho_id':despacho.id}, status=status.HTTP_201_CREATED)
-            except Exception:
-                return Response({'error':'FATAL ERROR NOT CREATED'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            except Exception as e:
+                return Response({'error':f'FATAL ERROR NOT CREATED:{e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 class AsignarDespacho(APIView):
