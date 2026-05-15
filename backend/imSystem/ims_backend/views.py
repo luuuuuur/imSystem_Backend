@@ -93,6 +93,8 @@ class CustomEncoder(json.JSONEncoder):
             return obj.isoformat()
         return super().default(obj)
 #----CLASS BASED VIEWS----
+
+#API para INICIAR sesion en la aplicacion
 class Login(EnsureCsrfMixin, APIView):
     #TODO: Implementacion de MFA con Google Authenticator (TOTP)
     permission_classes = [AllowAny]
@@ -132,7 +134,7 @@ class Inventory(APIView):
 
 
 
-#API de las ambulancias
+#API para OBTENER las ambulancias
 class AmbulanciaAPI(APIView):
     def get_permissions(self):
         if self.request.method == 'GET':
@@ -145,7 +147,7 @@ class AmbulanciaAPI(APIView):
         return Response(list(data_ambulancias), status=status.HTTP_200_OK)
 
 
-#API para obtener datos del personal
+#API para OBTENER datos del personal
 class DataPersonal(APIView):
     def get_permissions(self):
         # Paréntesis agregados para instanciar las clases correctamente
@@ -206,6 +208,8 @@ class DataPersonal(APIView):
 #TODO: Creacion de la validación del TOTP (MFA)
 #TODO: Creación de la API de notificaciones -> SSE
 #TODO: Creación de la API para carga de documentos y descarga de documentos (SOLO lectura, generar un QR desde HASH) -> prioridad
+
+#API para REGISTRAR las atenciones post-despacho y subir los documentos firmados al S3
 class RegistroAtencionAPI(APIView):
     permission_classes = [WorkerProfileOnly]
     def post(self,request):
@@ -327,16 +331,12 @@ class RegistroAtencionAPI(APIView):
             return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
 
 
-#Creación de la API para la gestión de los Equipos de trabajo
+#API para creacion de GRUPOS de trabajo
 class Grupos(APIView):
     def get_permissions(self):
         if self.request.method == 'GET':
             return[IsAuthenticated()]
         return [ControlProfileOnly()]
-    
-
-
-
     def post(self, request):
         serializer = CrearGrupoSerializer(data=request.data)
 
@@ -360,8 +360,6 @@ class Grupos(APIView):
 
     def patch(self, request):
         serializer = RemoverMiembroGrupo(data=request.data)
-
-
         if serializer.is_valid():
             valid_data = serializer.validated_data
             try:
@@ -398,6 +396,8 @@ class Grupos(APIView):
                     'personal__id', 'personal__first_name','personal__last_name','personal__rut','personal__rol__nombre_rol'
                 )
             return Response(list(query), status=status.HTTP_200_OK)
+        
+#API para AÑADIR miembros a grupos YA EXISTENTES
 class AddMemberToGroup(APIView):
     permission_classes = [ControlProfileOnly]
     def post(self, request):
@@ -424,7 +424,7 @@ class AddMemberToGroup(APIView):
 class RegistrosPacientesAPI(APIView):
     def get_permissions(self):
         if self.request.method == 'GET':
-            return[WorkerProfileOnly()]
+            return[IsAuthenticated()]
         return [ControlProfileOnly()]
 
     def post(self, request):
@@ -463,7 +463,8 @@ class RegistrosPacientesAPI(APIView):
 
 #TODO: Creación de la API para los estados de los usuarios (en turno, disponible, fuera de servicio)
 #TODO: Creación de la API para la gestión de los datos de los pacientes(para cargar al documento)
-#Creacion de la API para despachar las atenciones
+
+#API para CREAR los despachos
 class CreateDespacho(APIView):
     permission_classes = [ControlProfileOnly]
     def post(self, request):
@@ -484,6 +485,7 @@ class CreateDespacho(APIView):
                 return Response({'error':f'FATAL ERROR NOT CREATED:{e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#API para asignar los despachos a un grupo previamente creado y existente
 class AsignarDespacho(APIView):
     permission_classes = [ControlProfileOnly]
     def patch(self, request):
@@ -507,7 +509,7 @@ class AsignarDespacho(APIView):
         
 
 
-
+#API para obtener TODOS Los despachos sin necesidad de incluir al usuario per se
 class AllDespachos(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):
@@ -516,8 +518,8 @@ class AllDespachos(APIView):
             if serializer.is_valid():
                 valid_data = serializer.validated_data
                 despacho = Despacho.objects.filter(
-                    id=valid_data['despacho_id']
-                ).exclude(estado__in=['finalizado', 'cancelado']).first()
+                    id=valid_data['despacho_id'],
+                ).select_related('atencion', 'atencion__paciente').exclude(estado__in=['finalizado', 'cancelado']).first()
 
                 if not despacho:
                     return Response({'error': 'Despacho no encontrado'}, status=status.HTTP_404_NOT_FOUND)
@@ -533,7 +535,7 @@ class AllDespachos(APIView):
                         'personal__last_name', 'personal__rut',
                         'personal__rol__nombre_rol'
                     ))
-
+                atencion = getattr(despacho, 'atencion', None)
                 resultado = {
                     'id': despacho.id,
                     'estado': despacho.estado,
@@ -545,6 +547,8 @@ class AllDespachos(APIView):
                     'ambulancia_id': despacho.ambulancia_id,
                     'creado_por_id': despacho.creado_por_id,
                     'asignado_por_id': despacho.asignado_por_id,
+                    'nombre_paciente':atencion.paciente.nombre_completo if atencion is not None else 'error',
+                    'rut_paciente': atencion.paciente.rut if atencion is not None else 'Sin paciente asignado al despacho',
                     'personal': personal
                 }
                 return Response(resultado, status=status.HTTP_200_OK)
@@ -553,9 +557,10 @@ class AllDespachos(APIView):
         else:
             despachos = Despacho.objects.exclude(
                     estado__in=['finalizado', 'cancelado']
-                ).select_related('ambulancia', 'creado_por', 'asignado_por')
+                ).select_related('ambulancia', 'creado_por', 'asignado_por','atencion','atencion__paciente')
             resultado = []
             for d in despachos:
+                atencion = getattr(d, 'atencion', None)
                 dp = DespachoPersonal.objects.filter(despacho=d).first()
                 personal = []
                 if dp:
@@ -567,6 +572,7 @@ class AllDespachos(APIView):
                         'personal__last_name', 'personal__rut',
                         'personal__rol__nombre_rol'
                     ))
+                
                 resultado.append({
                     'id': d.id,
                     'estado': d.estado,
@@ -576,15 +582,18 @@ class AllDespachos(APIView):
                     'fecha_llamado': d.fecha_llamado,
                     'fecha_asignacion': d.fecha_asignacion,
                     'ambulancia_id': d.ambulancia_id,
+                    'nombre_paciente': atencion.paciente.nombre_completo if atencion else 'Sin paciente asignado al despacho',
+                    'rut_paciente': atencion.paciente.rut if atencion else 'Sin paciente asignado al despacho',
                     'personal': personal
                 })
+
             return Response(resultado, status=status.HTTP_200_OK)
 #TODO: Creacion de la API de logs para Auditorías -> para debatir
 #TODO: Creación de la API de exportación de las atenciones en formatio FHIR HL7
 #TODO: Creación de la API de tickets para recuperación de credenciales
-#IGNORAR DE AQUI PARA ABAJO
-# TESTING API DESPACHOS ASIGNADOS
-class DespachoUsuarioAPI(APIView):
+
+#API para retornar el despacho asignado al USUARIO LOGEADO AL MOMENTO DE HACER LA SOLICITUD, diferenciar de arriba que retorna todos los despachos
+class DespachoASolicitudUsuario(APIView):
     def get_permissions(self):
         if self.request.method == 'GET':
             return [IsAuthenticated()]
@@ -607,6 +616,8 @@ class DespachoUsuarioAPI(APIView):
                 'despacho',
                 'despacho__ambulancia',
                 'despacho__creado_por',
+                'despacho__atencion',
+                'despacho__atencion__paciente'
             ).exclude(
                 despacho__estado__in=['finalizado', 'cancelado']
             )
@@ -620,9 +631,11 @@ class DespachoUsuarioAPI(APIView):
                     'personal__rut',
                     'personal__rol__nombre_rol',
             )
+            
             resultado = []
             for dp in despachos:
                 d = dp.despacho
+                atencion = getattr(d, 'atencion',None)
                 # obtener personal del grupo
                 resultado.append({
                     'id': str(d.id),
@@ -631,6 +644,10 @@ class DespachoUsuarioAPI(APIView):
                     'direccionDestino': d.direccion_destino,
                     'descripcionLlamado': d.descripcion_llamado,
                     'fechaLlamado': d.fecha_llamado,
+                    'paciente':{
+                        'nombre':atencion.paciente.nombre_completo,
+                        'rut':atencion.paciente.rut
+                    } if atencion else None,
                     'ambulancia': {
                         'id': str(d.ambulancia.id),
                         'patente': d.ambulancia.patente,
@@ -645,9 +662,10 @@ class DespachoUsuarioAPI(APIView):
         except Exception:
             return Response({'error': 'failed to get the data'},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#API para retornar las atenciones, recibe parámetros a través de URL
 class AtencionAPI(APIView):
     permission_classes=[IsAuthenticated]
-    
     def get(self, request):
         if request.query_params:
             serializer = ParamAtencionSerializer(data=request.query_params)
