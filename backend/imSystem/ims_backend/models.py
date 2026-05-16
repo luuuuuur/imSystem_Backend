@@ -50,7 +50,7 @@ class Paciente(models.Model):
     nombre_completo = models.CharField(max_length=255)
     fecha_nacimiento = models.DateField()
     direccion = models.CharField(max_length=255)
-    condicion_paciente = models.TextField()
+    condicion_paciente = models.TextField(null=True, blank=True)
     telefono = models.CharField(max_length=12, null=True, blank=True)
     comuna = models.CharField(max_length=30, blank=True, null=True)
     @property
@@ -111,7 +111,7 @@ class Despacho(models.Model):
         help_text="Usuario de control que creó el despacho",
         null=True,
         blank=True
-    )
+    )#SE RELLENA AL MOMENTO DE CREAR EL DESPACHO ES AUTOMATICO TOMA EL USUAIRO MEDIANTE REQUEST.USER
     asignado_por = models.ForeignKey(
         Personal,
         on_delete=models.PROTECT,
@@ -119,13 +119,15 @@ class Despacho(models.Model):
         help_text="Usuario de control que asignó el despacho",
         null=True,
         blank=True
-    )
+    )#SE RELLENA AL MOMENTO DE ASIGNARLE UN DESPACHO A UN GRUPO NO EN LA CREACION DE UN DESPACHO 
+    #ES AUTOMATICO TOMA EL USUARIO MEDIANTE REQUEST.USER
 
     estado = models.CharField(max_length=30, choices=ESTADOS, default='recibido')
     fecha_llamado = models.DateTimeField(auto_now_add=True)
     fecha_asignacion = models.DateTimeField(null=True, blank=True)
     fecha_finalizacion = models.DateTimeField(null=True, blank=True)
-
+    paciente = models.ForeignKey(Paciente, related_name='despacho_paciente', null=True, on_delete=models.PROTECT)
+    #Acá se asigna al paciente al momento de crear el despacho
     class Meta:
         indexes = [
             models.Index(fields=['estado', 'fecha_llamado']),
@@ -148,7 +150,6 @@ class DespachoPersonal(models.Model):
 
 
 class Atencion(models.Model):
-    paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE)
     ambulancia = models.ForeignKey(Ambulancia, on_delete=models.PROTECT)
     despacho = models.OneToOneField(
         Despacho,
@@ -164,10 +165,9 @@ class Atencion(models.Model):
 
     sello_electronico = models.TextField(blank=True, null=True, help_text="Hash de integridad")
     estado_sello = models.CharField(max_length=20, default="Pendiente")
-
     def __str__(self):
-        return f"Atención {self.id} - {self.paciente.nombre_completo}"
-
+        return f"Atención {self.id} - {self.despacho.paciente.nombre_completo if self.despacho 
+                                       and self.despacho.paciente else 'Sin paciente'}"
 class SignosVitales(models.Model):
     atencion = models.ForeignKey(Atencion, on_delete=models.CASCADE, related_name='signos_vitales')
     timestamp = models.DateTimeField(auto_now_add=True)

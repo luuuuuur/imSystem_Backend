@@ -29,7 +29,7 @@ from .serializers import CrearGrupoSerializer
 from .serializers import RemoverMiembroGrupo
 from .serializers import AgregarMiembroGrupo
 from .serializers import PacienteSerializer
-from .serializers import DespachoSerializer
+from .serializers import CreateDespachoSerializer
 from .serializers import AsignarDespachoSerializer
 from .serializers import ParamSerializer
 from .serializers import ParamPacienteSerializer
@@ -167,7 +167,7 @@ class AmbulanciaAPI(APIView):
         return Response(list(data_ambulancias), status=status.HTTP_200_OK)
 
 
-# API para OBTENER datos del personal
+# API para OPERAR datos del personal
 class DataPersonal(APIView):
     def get_permissions(self):
         # Paréntesis agregados para instanciar las clases correctamente
@@ -501,19 +501,28 @@ class CreateDespacho(APIView):
     permission_classes = [ControlProfileOnly]
 
     def post(self, request):
-        serializer = DespachoSerializer(data=request.data)
+        serializer = CreateDespachoSerializer(data=request.data)
         if serializer.is_valid():
             valid_data = serializer.validated_data
             try:
+                paciente = get_object_or_404(Paciente, rut=valid_data['paciente_rut'])
                 with transaction.atomic():
                     despacho = Despacho.objects.create(
                         direccion_origen=valid_data['direccion_origen'],
                         direccion_destino=valid_data['direccion_destino'],
                         descripcion_llamado=valid_data['descripcion_llamado'],
+                        paciente = paciente,
                         creado_por=request.user,
                         estado='recibido'
                     )
-                return Response({'success':'success', 'despacho_id':despacho.id}, status=status.HTTP_201_CREATED)
+                return Response({'success':'success', 
+                                 'despacho':
+                                 {'id':despacho.id, 
+                                  'paciente':
+                                    {'rut':paciente.rut, 
+                                     'nombre': paciente.nombre_completo
+                                    }
+                                  }}, status=status.HTTP_201_CREATED)
             except Exception as e:
                 return Response({'error':f'FATAL ERROR NOT CREATED:{e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
@@ -547,7 +556,6 @@ class AsignarDespacho(APIView):
 # API para obtener TODOS Los despachos sin necesidad de incluir al usuario per se
 class AllDespachos(APIView):
     permission_classes = [IsAuthenticated]
-
     def get(self, request):
         if request.query_params:
             serializer = ObtenerDespachoSerializer(data=request.query_params)
@@ -708,7 +716,6 @@ class DespachoASolicitudUsuario(APIView):
 # API para retornar las atenciones, recibe parámetros a través de URL
 class AtencionAPI(APIView):
     permission_classes=[IsAuthenticated]
-
     def get(self, request):
         if request.query_params:
             serializer = ParamAtencionSerializer(data=request.query_params)

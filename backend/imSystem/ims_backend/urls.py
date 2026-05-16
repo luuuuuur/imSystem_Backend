@@ -2,18 +2,16 @@ from django.urls import path
 from .views import *
 urlpatterns = [
     path("api/login/", Login.as_view(), name="Login"),
-    path("api/allpersonal/",DataPersonal.as_view(), name="allpersonal"),
-    path("api/registroPacientes/", RegistrosPacientesAPI.as_view(),name="RegistroPacientesAPI"),
-    path("api/suscribirAgrupo/",Grupos.as_view(),name="Grupos"),
-    path("api/suscribirAgrupo/AddMember/", AddMemberToGroup.as_view(), name="AddMemberToGroup"),
-    path("api/despachos/create/",CreateDespacho.as_view(), name="CreateDespacho"),
+    path("api/personal/",DataPersonal.as_view(), name="DataPersonal"),
+    path("api/pacientes/", RegistrosPacientesAPI.as_view(),name="RegistroPacientesAPI"),
+    path("api/grupo/",Grupos.as_view(),name="Grupos"),
+    path("api/grupo/suscribir/", AddMemberToGroup.as_view(), name="AddMemberToGroup"),
+    path("api/despachos/add/",CreateDespacho.as_view(), name="CreateDespacho"),
     path("api/despachos/asignar/",AsignarDespacho.as_view(), name="AsignarDespacho"),
     path("api/despachos/get/", DespachoASolicitudUsuario.as_view(), name="DespachoUsuarioAPI"),
     path("api/despachos/getall/", AllDespachos.as_view(), name="AllDespachos"),
     path("api/ambulancias/", AmbulanciaAPI.as_view(), name="AmbulanciaAPI"),
-    path("api/despachos/",DespachoASolicitudUsuario.as_view(), name="DespachoUsuarioAPI"),
     path("api/atenciones/", AtencionAPI.as_view(), name="AtencionAPI"),
-    path("api/register/worker/", DataPersonal.as_view(), name="DataPersonal"),
-    path("api/register/atencion/", RegistroAtencionAPI.as_view(), name="RegistroAtencionAPI"),
+    path("api/atenciones/add/", RegistroAtencionAPI.as_view(), name="RegistroAtencionAPI"),
 ]
 

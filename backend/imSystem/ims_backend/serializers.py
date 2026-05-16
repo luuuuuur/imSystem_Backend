@@ -18,28 +18,23 @@ class PersonalSerializer(serializers.ModelSerializer):
 
 
 class PacienteSerializer(serializers.ModelSerializer):
-    full_name  = serializers.CharField(source='nombre_completo')
-    date_birth = serializers.DateField(source='fecha_nacimiento')
-
+    nombre_completo  = serializers.CharField()
+    fecha_nacimiento = serializers.DateField()
+    rut = serializers.CharField()
     class Meta:
         model = Paciente
         fields = [
-            'id', 'rut', 'full_name', 'date_birth',
+            'id', 'rut', 'nombre_completo', 'fecha_nacimiento',
             'direccion', 'condicion_paciente', 'telefono', 'comuna'
         ]
 class ParamPacienteSerializer(serializers.Serializer):
     rut = serializers.CharField(max_length=12, required=True)
 
-class DespachoSerializer(serializers.ModelSerializer):
-    d_o      = serializers.CharField(source='direccion_origen')
-    d_d      = serializers.CharField(source='direccion_destino',    required=False, allow_blank=True, default='')
-    d_llamado = serializers.CharField(source='descripcion_llamado', required=False, allow_blank=True, default='')
-
-    class Meta:
-        model  = Despacho
-        fields = ['id', 'd_o', 'd_d', 'd_llamado', 'estado', 'ambulancia', 'creado_por', 'asignado_por']
-        read_only_fields = ['estado', 'creado_por', 'asignado_por', 'ambulancia']
-
+class CreateDespachoSerializer(serializers.Serializer):
+    direccion_origen     = serializers.CharField()
+    direccion_destino      = serializers.CharField(required=False, allow_blank=True, default='No incluyó')
+    descripcion_llamado = serializers.CharField(required=False, allow_blank=True, default='No incluyó')
+    paciente_rut = serializers.CharField(write_only=True)
 
 class AsignarDespachoSerializer(serializers.Serializer):
     amb_id   = serializers.IntegerField()
