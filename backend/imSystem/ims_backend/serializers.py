@@ -38,7 +38,7 @@ class CreateDespachoSerializer(serializers.Serializer):
 
 class AsignarDespachoSerializer(serializers.Serializer):
     amb_id   = serializers.IntegerField()
-    d_id     = serializers.IntegerField()
+    despacho_id     = serializers.IntegerField()
     grupo_id = serializers.IntegerField()
 
 class AmbulanciaSerializer(serializers.ModelSerializer):
@@ -128,11 +128,9 @@ class CronologiaSerializer(serializers.ModelSerializer):
 
 class DespachoAtencionSerializer(serializers.Serializer):
     despacho_id = serializers.IntegerField(required=True)
-    paciente_id = serializers.IntegerField(required=True)
     ambulancia_id = serializers.IntegerField( required=True)
-    direccion_despacho = serializers.CharField(required=True)
     hora_salida = serializers.DateTimeField(required=True)
-    hora_llegada = serializers.DateTimeField(required=True)
+    hora_llegada = serializers.DateTimeField(required=False)
 class InsumoUtilizadoSerializer(serializers.Serializer):
     insumo_id = serializers.IntegerField()
     dosis=serializers.DecimalField(max_digits=10, decimal_places=1)

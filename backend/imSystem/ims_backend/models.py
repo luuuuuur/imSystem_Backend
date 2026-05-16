@@ -48,7 +48,7 @@ class SuscritosAGrupo(models.Model):
 class Paciente(models.Model):
     rut = models.CharField(max_length=12, unique=True)
     nombre_completo = models.CharField(max_length=255)
-    fecha_nacimiento = models.DateField()
+    fecha_nacimiento = models.DateField(null=True, blank=True)
     direccion = models.CharField(max_length=255)
     condicion_paciente = models.TextField(null=True, blank=True)
     telefono = models.CharField(max_length=12, null=True, blank=True)
@@ -158,8 +158,6 @@ class Atencion(models.Model):
         null=True,
         blank=True
     )
-
-    direccion_despacho = models.CharField(max_length=255)
     hora_salida = models.DateTimeField()
     hora_llegada = models.DateTimeField(null=True, blank=True)
 

@@ -246,7 +246,6 @@ class RegistroAtencionAPI(APIView):
             insumos_data = valid_data['insumos_utilizados']
             despacho_data = valid_data['despacho']
             despacho = get_object_or_404(Despacho, id=despacho_data['despacho_id'])
-            paciente = get_object_or_404(Paciente, id=despacho_data['paciente_id'])
             ambulancia = get_object_or_404(Ambulancia, id=despacho_data['ambulancia_id'])
             if despacho.estado != "asignado":
                 return Response({'error':'cannot edit'}, status=status.HTTP_400_BAD_REQUEST)
@@ -255,8 +254,7 @@ class RegistroAtencionAPI(APIView):
             try:
                 with transaction.atomic():
                     
-                    atencion = Atencion.objects.create(paciente=paciente, ambulancia=ambulancia, despacho=despacho,
-                                            direccion_despacho=despacho_data['direccion_despacho'],
+                    atencion = Atencion.objects.create(ambulancia=ambulancia, despacho=despacho,
                                             hora_salida=despacho_data['hora_salida'],
                                             hora_llegada=despacho_data['hora_llegada'])
                     SignosVitales.objects.bulk_create([SignosVitales(atencion=atencion, **sv) for sv in svd])
@@ -288,7 +286,16 @@ class RegistroAtencionAPI(APIView):
                             observaciones=insumo_data['observaciones']
                         )
                     document = {
-                        "despacho": model_to_dict(atencion),
+                        "atencion": model_to_dict(atencion),
+                        "paciente":{
+                            "nombre_completo":despacho.paciente.nombre_completo,
+                            "rut":despacho.paciente.rut
+                        },
+                        "registrado_por":{
+                            "nombre_completo":request.user.full_name,
+                            "rut":request.user.rut,
+                            "rol":request.user.rol.nombre_rol
+                        },
                         "signos_vitales":list(SignosVitales.objects.filter(atencion=atencion)
                                                                     .values(
                                                                         'id',
@@ -320,7 +327,7 @@ class RegistroAtencionAPI(APIView):
                     atencion.sello_electronico= f"{sha_256_hex}:{firma_b64}"
                     atencion.estado_sello="Firmado"
                     atencion.save(update_fields=["sello_electronico","estado_sello"])
-                    document["despacho"] = model_to_dict(atencion)
+                    document["atencion"] = model_to_dict(atencion)
                     document["Hash"]= sha_256_hex
                     document["Firma"]= firma_b64
                     s3_key_json = f"documentos/{sha_256_hex}.json"
@@ -407,7 +414,6 @@ class Grupos(APIView):
     def get(self, request):
         if request.query_params:
             serializer = ParamSerializer(data=request.query_params)
-
             if serializer.is_valid():
                 valid_data = serializer.validated_data
                 query = SuscritosAGrupo.objects.filter(grupo_id=valid_data['group_id'], fecha_salida=None).values('id',
@@ -418,7 +424,7 @@ class Grupos(APIView):
                 return Response({'error':'not correct format or id'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             query = SuscritosAGrupo.objects.filter(fecha_salida=None).values(
-                    'personal__id', 'personal__first_name','personal__last_name','personal__rut','personal__rol__nombre_rol'
+                    'id','personal__id', 'personal__first_name','personal__last_name','personal__rut','personal__rol__nombre_rol'
                 )
             return Response(list(query), status=status.HTTP_200_OK)
 
@@ -532,7 +538,6 @@ class CreateDespacho(APIView):
 # API para asignar los despachos a un grupo previamente creado y existente
 class AsignarDespacho(APIView):
     permission_classes = [ControlProfileOnly]
-
     def patch(self, request):
         serializer = AsignarDespachoSerializer(data=request.data)
         if serializer.is_valid():
@@ -540,15 +545,29 @@ class AsignarDespacho(APIView):
             try:
                 amb = get_object_or_404(Ambulancia, id=valid_data['amb_id'])
                 with transaction.atomic():
-                    Despacho.objects.filter(id=valid_data['d_id']).update(
+                    Despacho.objects.filter(id=valid_data['despacho_id']).update(
                         fecha_asignacion=timezone.now(),asignado_por=request.user,
                         ambulancia=amb, estado='asignado')
-                    despacho=get_object_or_404(Despacho, id=valid_data['d_id'])
-                    grupo_asign=get_object_or_404(GrupoPersonal, id=valid_data['grupo_id'])
-                    DespachoPersonal.objects.create(despacho=despacho, grupo=grupo_asign)
-                    return Response({'success':'success'},status=status.HTTP_200_OK)
-            except Exception:
-                return Response({'error':'failed to assign'}, status=status.HTTP_400_BAD_REQUEST)
+                    despacho=get_object_or_404(Despacho, id=valid_data['despacho_id'])
+                    grupo_nombre=get_object_or_404(GrupoPersonal, id=valid_data['grupo_id'])
+                    if DespachoPersonal.objects.filter(despacho=despacho, grupo=grupo_nombre).exists():
+                        return Response({'error': 'Este grupo ya está asignado a este despacho'}, status=status.HTTP_409_CONFLICT)
+                    DespachoPersonal.objects.create(despacho=despacho, grupo=grupo_nombre)
+                    grupo_miembros = SuscritosAGrupo.objects.filter(grupo=grupo_nombre,fecha_salida = None )
+                    personal = []
+                    for members in grupo_miembros:
+                        personal.append({'personal_id':members.personal.id,
+                                         'personal_rut': members.personal.rut,
+                                         'personal_name':members.personal.full_name})
+                    return Response({'success':'success', 'despacho_data':{
+                        'id':valid_data['despacho_id'],
+                        'grupo':{
+                            'nombre':grupo_nombre.nombre_grupo,
+                            'personal':personal
+                        }
+                    }},status=status.HTTP_200_OK)
+            except Exception as e:
+                return Response({'error':f'failed to assign: {e}'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -563,7 +582,7 @@ class AllDespachos(APIView):
                 valid_data = serializer.validated_data
                 despacho = Despacho.objects.filter(
                     id=valid_data['despacho_id'],
-                ).select_related('atencion', 'atencion__paciente').exclude(estado__in=['finalizado', 'cancelado']).first()
+                ).select_related('ambulancia','atencion','asignado_por','creado_por','paciente').exclude(estado__in=['finalizado', 'cancelado']).first()
 
                 if not despacho:
                     return Response({'error': 'Despacho no encontrado'}, status=status.HTTP_404_NOT_FOUND)
@@ -591,8 +610,10 @@ class AllDespachos(APIView):
                     'ambulancia_id': despacho.ambulancia_id,
                     'creado_por_id': despacho.creado_por_id,
                     'asignado_por_id': despacho.asignado_por_id,
-                    'nombre_paciente':atencion.paciente.nombre_completo if atencion is not None else 'error',
-                    'rut_paciente': atencion.paciente.rut if atencion is not None else 'Sin paciente asignado al despacho',
+                    'paciente':{
+                        'nombre_completo': despacho.paciente.nombre_completo,
+                        'rut':despacho.paciente.rut
+                    } if despacho.paciente else None,
                     'personal': personal
                 }
                 return Response(resultado, status=status.HTTP_200_OK)
@@ -601,10 +622,9 @@ class AllDespachos(APIView):
         else:
             despachos = Despacho.objects.exclude(
                     estado__in=['finalizado', 'cancelado']
-                ).select_related('ambulancia', 'creado_por', 'asignado_por','atencion','atencion__paciente')
+                ).select_related('ambulancia', 'creado_por', 'asignado_por','atencion','paciente')
             resultado = []
             for d in despachos:
-                atencion = getattr(d, 'atencion', None)
                 dp = DespachoPersonal.objects.filter(despacho=d).first()
                 personal = []
                 if dp:
@@ -626,8 +646,10 @@ class AllDespachos(APIView):
                     'fecha_llamado': d.fecha_llamado,
                     'fecha_asignacion': d.fecha_asignacion,
                     'ambulancia_id': d.ambulancia_id,
-                    'nombre_paciente': atencion.paciente.nombre_completo if atencion else 'Sin paciente asignado al despacho',
-                    'rut_paciente': atencion.paciente.rut if atencion else 'Sin paciente asignado al despacho',
+                    'paciente':{
+                        'nombre_completo':d.paciente.nombre_completo,
+                        'rut':d.paciente.rut
+                    } if d.paciente else None,
                     'personal': personal
                 })
 
@@ -666,7 +688,6 @@ class DespachoASolicitudUsuario(APIView):
                 'despacho__ambulancia',
                 'despacho__creado_por',
                 'despacho__atencion',
-                'despacho__atencion__paciente'
             ).exclude(
                 despacho__estado__in=['finalizado', 'cancelado']
             )
@@ -684,7 +705,6 @@ class DespachoASolicitudUsuario(APIView):
             resultado = []
             for dp in despachos:
                 d = dp.despacho
-                atencion = getattr(d, 'atencion',None)
                 # obtener personal del grupo
                 resultado.append({
                     'id': str(d.id),
@@ -694,9 +714,9 @@ class DespachoASolicitudUsuario(APIView):
                     'descripcionLlamado': d.descripcion_llamado,
                     'fechaLlamado': d.fecha_llamado,
                     'paciente':{
-                        'nombre':atencion.paciente.nombre_completo,
-                        'rut':atencion.paciente.rut
-                    } if atencion else None,
+                        'nombre_completo':d.paciente.nombre_completo,
+                        'rut':d.paciente.rut
+                    } if d.paciente else None,
                     'ambulancia': {
                         'id': str(d.ambulancia.id),
                         'patente': d.ambulancia.patente,
@@ -714,7 +734,7 @@ class DespachoASolicitudUsuario(APIView):
 
 
 # API para retornar las atenciones, recibe parámetros a través de URL
-class AtencionAPI(APIView):
+class RetornarAtencionAPI(APIView):
     permission_classes=[IsAuthenticated]
     def get(self, request):
         if request.query_params:

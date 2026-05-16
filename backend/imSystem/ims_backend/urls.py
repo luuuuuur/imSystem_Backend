@@ -11,7 +11,7 @@ urlpatterns = [
     path("api/despachos/get/", DespachoASolicitudUsuario.as_view(), name="DespachoUsuarioAPI"),
     path("api/despachos/getall/", AllDespachos.as_view(), name="AllDespachos"),
     path("api/ambulancias/", AmbulanciaAPI.as_view(), name="AmbulanciaAPI"),
-    path("api/atenciones/", AtencionAPI.as_view(), name="AtencionAPI"),
+    path("api/atenciones/", RetornarAtencionAPI.as_view(), name="AtencionAPI"),
     path("api/atenciones/add/", RegistroAtencionAPI.as_view(), name="RegistroAtencionAPI"),
 ]
 
