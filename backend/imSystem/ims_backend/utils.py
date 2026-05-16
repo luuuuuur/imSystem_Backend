@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 from django.conf import settings
 
 def generate_password():
-    alphabet = string.ascii_letters + string.digits + string.punctuation
+    alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(16))
 def generate_totp():
     key = pyotp.random_base32()
