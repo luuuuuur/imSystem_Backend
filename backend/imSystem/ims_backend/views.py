@@ -763,18 +763,20 @@ class RetornarAtencionAPI(APIView):
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         else:
-            atencion = Atencion.objects.select_related('despacho').all().values('id', 'hora_salida', 'hora_llegada', 'estado_sello', 'despacho__paciente__nombre_completo')
-            response= {
-                'atencion_id': atencion.id,
-                'hora_salida':atencion.hora_salida,
-                'hora_llegada':atencion.hora_llegada,
-                'estado_sello':atencion.estado_sello,
-                'despacho':{
-                    'despacho_id':atencion.despacho.id,
-                    'paciente':{
-                        'nombre':atencion.despacho.paciente.nombre_completo,
-                        'rut':atencion.despacho.paciente.rut
-                    } if atencion.despacho.paciente else None,
-                }if atencion.despacho else None
-            }
+            atencion = Atencion.objects.select_related('despacho__paciente').all()
+            response = []
+            for a in atencion:
+                response.append({
+                    'atencion_id': a.id,
+                    'hora_salida':a.hora_salida,
+                    'hora_llegada':a.hora_llegada,
+                    'estado_sello':a.estado_sello,
+                    'despacho':{
+                        'despacho_id':a.despacho.id,
+                        'paciente':{
+                            'nombre':a.despacho.paciente.nombre_completo,
+                            'rut':a.despacho.paciente.rut
+                        } if a.despacho.paciente else None,
+                    }if a.despacho else None
+                })
             return Response(response, status=status.HTTP_200_OK)
