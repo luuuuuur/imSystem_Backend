@@ -36,7 +36,7 @@ from .serializers import ParamPacienteSerializer
 from .serializers import PayloadSerializer
 from .serializers import ParamAtencionSerializer
 from .serializers import ObtenerDespachoSerializer
-
+from .serializers import AuthenticationSerializer
 # ─── MODELS ──────────────────────────────────────────────────────────────────
 from .models import Personal
 from .models import Paciente
@@ -59,7 +59,7 @@ from load_key            import GLOBAL_PRIVATE_KEY
 from .utils              import(get_s3_download_url, generate_totp, generate_password)
 from botocore.exceptions import ClientError
 from .s3                 import s3_client
-
+from .totp_auth.authentication import authentication
 
 # =============================================================================
 # PERMISOS PERSONALIZADOS
@@ -91,6 +91,11 @@ class WorkerProfileOnly(BasePermission):
     def has_permission(self, request,view):
         return bool(request.user.is_authenticated and request.user.rol and request.user.rol.nombre_rol in ['medic', 'nurse', 'driver'])
 
+class MFAVerified(BasePermission):
+    def has_permission(self, request, view):
+        return bool(
+            request.user.is_authenticated and request.session.get("mfa_verified", False)
+        )
 
 # =============================================================================
 # UTILIDADES
@@ -124,29 +129,35 @@ class Login(EnsureCsrfMixin, APIView):
         return Response({}, status=status.HTTP_200_OK)
 
     def post(self, request):
-        data_user = request.data.get('username')
-        data_pass = request.data.get('password')
-
-        try:
-            user = authenticate (
-                request,
-                username = data_user,
-                password = data_pass
-            )
-            if user is None:
-                return Response(
-                {'error':'Fallo al cargar al usuario, estás seguro de haber ingresado las credenciales correctas?'}
-                ,status=status.HTTP_401_UNAUTHORIZED)
-            
-            if user.rol is None:
-                return Response({'error':'User with no role assigned'}, status=status.HTTP_403_FORBIDDEN)
-            else:
-                login(request,user)
-                return Response({'success':'success', 'role': user.rol.nombre_rol}, status=status.HTTP_200_OK)
-        except ValueError:
-            return Response({'error':'wrong values check again'}, status=status.HTTP_401_UNAUTHORIZED)
-        except Exception as e:
-                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        serializer = AuthenticationSerializer(data=request.data)
+        if serializer.is_valid():
+            valid_data = serializer.validated_data
+            try:
+                user = authenticate (
+                        request,
+                        username = valid_data['username'],
+                        password = valid_data['password']
+                )
+                if user is None:
+                    return Response(
+                        {'error':'Fallo al cargar al usuario, estás seguro de haber ingresado las credenciales correctas?'}
+                        ,status=status.HTTP_401_UNAUTHORIZED)
+                if authentication(user.totp_secret, valid_data['totp_code']):
+                        
+                    if user.rol is None:
+                            return Response({'error':'User with no role assigned'}, status=status.HTTP_403_FORBIDDEN)
+                    else:
+                            login(request,user)
+                            request.session['mfa_verified'] = True
+                            return Response({'success':'success', 'role': user.rol.nombre_rol}, status=status.HTTP_200_OK)
+                else: 
+                    return Response({"error":'TOTP failed'}, status=status.HTTP_401_UNAUTHORIZED)
+            except ValueError:
+                return Response({'error':'wrong values check again'}, status=status.HTTP_401_UNAUTHORIZED)
+            except Exception as e:
+                    return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ─── TODO ─────────────────────────────────────────────────────────────────────
@@ -172,7 +183,7 @@ class DataPersonal(APIView):
     def get_permissions(self):
         # Paréntesis agregados para instanciar las clases correctamente
         if self.request.method == 'GET':
-            return [IsAuthenticated()]
+            return [MFAVerified()]
         return [ControlProfileOnly()]
 
     def get(self, request):
@@ -598,7 +609,6 @@ class AllDespachos(APIView):
                         'personal__last_name', 'personal__rut',
                         'personal__rol__nombre_rol'
                     ))
-                atencion = getattr(despacho, 'atencion', None)
                 resultado = {
                     'id': despacho.id,
                     'estado': despacho.estado,

@@ -141,3 +141,9 @@ class PayloadSerializer(serializers.Serializer):
     preinforme = PreInformeSerializer()
     cronologia = CronologiaSerializer()
     insumos_utilizados = InsumoUtilizadoSerializer(many=True)
+
+class AuthenticationSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField()
+    totp_code = serializers.CharField()
+    
