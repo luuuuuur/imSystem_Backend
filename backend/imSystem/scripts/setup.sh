@@ -40,8 +40,8 @@ case "$DISTRO_FAMILY" in
     redhat)  BASE_USER="ec2-user"  ;;
 esac
 
-BASE_DIR="/home/${BASE_USER}/backend"
-APP_DIR="${BASE_DIR}/imSystem"
+BASE_DIR="/home/${BASE_USER}/product"
+APP_DIR="${BASE_DIR}/imSystem_Backend/backend/imSystem"
 
 # ==VALIDACION DE DIRECTORIOS==
 if [ ! -d "$BASE_DIR" ]; then
@@ -58,9 +58,9 @@ if [ ! -f "${BASE_DIR}/install.txt" ]; then
     echo "ERROR: ${BASE_DIR}/install.txt no existe. No se pueden instalar dependencias."
     exit 1
 fi
-mkdir -p /var/ims/documentos
-chown "${BASE_USER}:${BASE_USER}" /var/ims/documentos
-chmod 750 /var/ims/documentos
+#mkdir -p /var/ims/documentos
+#chown "${BASE_USER}:${BASE_USER}" /var/ims/documentos
+#chmod 750 /var/ims/documentos
 
 # ==FUNCIONES POR FAMILIA==
 
@@ -170,9 +170,9 @@ if [ ! -f "${APP_DIR}/.mikufile" ]; then
 fi
 
 sudo mkdir -p /etc/gunicorn
-sudo cp "${APP_DIR}/.mikufile" /etc/gunicorn/ims.env
-sudo chown root:root /etc/gunicorn/ims.env
-sudo chmod 640 /etc/gunicorn/ims.env
+sudo cp "${APP_DIR}/imSystem/.mikufile" /etc/gunicorn/.mikufile
+sudo chown root:root /etc/gunicorn/.mikufile
+sudo chmod 640 /etc/gunicorn/.mikufile
 # ==GUNICORN SERVICE==
 if [ ! -f /etc/systemd/system/gunicorn.service ]; then
     echo "=== Configurando gunicorn.service ==="
@@ -184,7 +184,7 @@ After=network.target
 [Service]
 User=${BASE_USER}
 WorkingDirectory=${APP_DIR}
-EnvironmentFile=/etc/gunicorn/ims.env
+EnvironmentFile=/etc/gunicorn/.mikufile
 ExecStart=${BASE_DIR}/env/bin/gunicorn \\
     backend_config.wsgi:application \\
     --bind 127.0.0.1:8000 \\

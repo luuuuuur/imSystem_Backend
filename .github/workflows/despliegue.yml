@@ -10,15 +10,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy por SSH
+      - name: Deploy SSH Server 2
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.IP_SERVER }}
-          username: ${{ secrets.USER }}
-          key: ${{ secrets.SSH_KEY }}
+          host: ${{secrets.SERVER_2}}
+          username: ${{secrets.USER_SERVER_2}}
+          key: ${{secrets.SSH_KEY}}
           script: |
-            cd ~
-            git pull origin main
-            cd backend/imSystem/scripts
-            bash daily.sh
-            
+           cd ~/product/imSystem_Backend
+           git pull origin main
+           cd ~/product/imSystem_Backend/backend/imSystem/scripts
+           bash daily.sh

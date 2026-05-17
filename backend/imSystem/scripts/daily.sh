@@ -28,8 +28,8 @@ case "$ID" in
         ;;
 esac
 
-BASE_DIR="/home/${BASE_USER}/backend"
-APP_DIR="${BASE_DIR}/imSystem"
+BASE_DIR="/home/${BASE_USER}/product/"
+APP_DIR="${BASE_DIR}/imSystem_Backend/backend/imSystem"
 PIP="${BASE_DIR}/env/bin/pip"
 PYTHON="${BASE_DIR}/env/bin/python3"
 
