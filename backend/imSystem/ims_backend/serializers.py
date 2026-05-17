@@ -17,16 +17,9 @@ class PersonalSerializer(serializers.ModelSerializer):
         read_only_fields = ['username', 'rol_nombre']
 
 
-class PacienteSerializer(serializers.ModelSerializer):
+class PacienteSerializer(serializers.Serializer):
     nombre_completo  = serializers.CharField()
-    fecha_nacimiento = serializers.DateField()
     rut = serializers.CharField()
-    class Meta:
-        model = Paciente
-        fields = [
-            'id', 'rut', 'nombre_completo', 'fecha_nacimiento',
-            'direccion', 'condicion_paciente', 'telefono', 'comuna'
-        ]
 class ParamPacienteSerializer(serializers.Serializer):
     rut = serializers.CharField(max_length=12, required=True)
 
@@ -146,4 +139,3 @@ class AuthenticationSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField()
     totp_code = serializers.CharField()
-    

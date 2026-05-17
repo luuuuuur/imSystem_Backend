@@ -511,7 +511,7 @@ class RegistrosPacientesAPI(APIView):
             valid_data = serializer.validated_data
             try:
                 Paciente.objects.create(rut=valid_data['rut'],
-                nombre_completo=valid_data['full_name'], fecha_nacimiento=valid_data['date_birth'],
+                nombre_completo=valid_data['nombre_completo'],
                 direccion=valid_data['direccion'], condicion_paciente=valid_data['condicion_paciente'],
                 telefono=valid_data['telefono'], comuna=valid_data['comuna'])
                 return Response({'success':'success'}, status=status.HTTP_200_OK)
