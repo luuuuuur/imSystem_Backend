@@ -427,17 +427,50 @@ class Grupos(APIView):
             serializer = ParamSerializer(data=request.query_params)
             if serializer.is_valid():
                 valid_data = serializer.validated_data
-                query = SuscritosAGrupo.objects.filter(grupo_id=valid_data['group_id'], fecha_salida=None).values('id',
-                    'personal__id', 'personal__first_name','personal__last_name','personal__rut','personal__rol__nombre_rol'
-                )
-                return Response(list(query), status=status.HTTP_200_OK)
+                grupos = {}
+                suscripciones = SuscritosAGrupo.objects.filter(
+                    grupo_id=valid_data['group_id'],fecha_salida=None
+                ).select_related('grupo', 'personal', 'personal__rol')
+                for suscripcion in suscripciones:
+                    grupo_id = suscripcion.grupo.id
+                    if grupo_id not in grupos:
+                        grupos[grupo_id] = {
+                            'grupo_id': grupo_id,
+                            'grupo_nombre': suscripcion.grupo.nombre_grupo,
+                            'miembros': []
+                        }
+                    grupos[grupo_id]['miembros'].append({
+                        'nombre': suscripcion.personal.full_name,
+                        'rut': suscripcion.personal.rut,
+                        'rol': suscripcion.personal.rol.nombre_rol if suscripcion.personal.rol else None,
+                        'dia_ingresado': suscripcion.fecha_entrada,
+                        'dia_salida': suscripcion.fecha_salida
+                    })
+                    return Response(list(grupos.values()), status=status.HTTP_200_OK)
             else:
                 return Response({'error':'not correct format or id'}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            query = SuscritosAGrupo.objects.filter(fecha_salida=None).values(
-                    'id','personal__id', 'personal__first_name','personal__last_name','personal__rut','personal__rol__nombre_rol'
-                )
-            return Response(list(query), status=status.HTTP_200_OK)
+            grupos = {}
+            suscripciones = SuscritosAGrupo.objects.filter(
+                fecha_salida=None
+            ).select_related('grupo', 'personal', 'personal__rol')
+            
+            for suscripcion in suscripciones:
+                grupo_id = suscripcion.grupo.id
+                if grupo_id not in grupos:
+                    grupos[grupo_id] = {
+                        'grupo_id': grupo_id,
+                        'grupo_nombre': suscripcion.grupo.nombre_grupo,
+                        'miembros': []
+                    }
+                grupos[grupo_id]['miembros'].append({
+                    'nombre': suscripcion.personal.full_name,
+                    'rut': suscripcion.personal.rut,
+                    'rol': suscripcion.personal.rol.nombre_rol if suscripcion.personal.rol else None,
+                    'dia_ingresado': suscripcion.fecha_entrada,
+                    'dia_salida': suscripcion.fecha_salida
+                })
+            return Response(list(grupos.values()), status=status.HTTP_200_OK)
 
 
 # API para AÑADIR miembros a grupos YA EXISTENTES
