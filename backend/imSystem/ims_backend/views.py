@@ -347,6 +347,8 @@ class RegistroAtencionAPI(APIView):
                                              firma_s3_key=s3_key_sig,
                                              archivo_hash=sha_256_hex,
                                              atencion=atencion)
+                    despacho.estado = "finalizado"
+                    despacho.save(update_fields=["estado"])
             except ValueError as ve:
                 return Response({"error":str(ve)}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
