@@ -159,6 +159,14 @@ esac
 
 # ==NGINX ARRANQUE==
 sudo nginx -t
+chmod o+x /home/ubuntu
+chmod o+x /home/ubuntu/product
+chmod o+x /home/ubuntu/product/imSystem_Backend
+chmod o+x /home/ubuntu/product/imSystem_Backend/backend
+chmod o+x /home/ubuntu/product/imSystem_Backend/backend/imSystem
+chmod o+x /home/ubuntu/product/imSystem_Backend/backend/imSystem/staticfiles
+chmod -R o+r /home/ubuntu/product/imSystem_Backend/backend/imSystem/staticfiles
+sudo systemctl reload nginx
 sudo systemctl daemon-reload
 sudo systemctl enable nginx
 sudo systemctl start nginx || sudo systemctl restart nginx
