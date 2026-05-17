@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>IMS — Test Client</title>
+<style>
+  body { font-family: monospace; max-width: 960px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+  h2 { margin: 24px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #555; }
+  .card { background: white; border: 1px solid #ddd; padding: 16px; margin-bottom: 16px; }
+  input, select, textarea { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #ccc; font-family: monospace; font-size: 13px; margin-bottom: 8px; }
+  textarea { height: 300px; resize: vertical; }
+  button { padding: 7px 14px; background: #222; color: white; border: none; cursor: pointer; font-family: monospace; font-size: 12px; margin-right: 6px; margin-bottom: 6px; }
+  button:hover { background: #444; }
+  button.secondary { background: #666; }
+  button.danger { background: #8b0000; }
+  .response { background: #1e1e1e; color: #d4d4d4; padding: 12px; font-size: 12px; white-space: pre-wrap; word-break: break-all; max-height: 400px; overflow-y: auto; margin-top: 8px; }
+  .status { display: inline-block; padding: 2px 8px; font-size: 12px; margin-bottom: 4px; }
+  .ok  { background: #d4edda; color: #155724; }
+  .err { background: #f8d7da; color: #721c24; }
+  .row { display: flex; gap: 8px; }
+  .row > div { flex: 1; }
+  label { font-size: 12px; color: #555; display: block; margin-bottom: 2px; }
+  #session-info { font-size: 12px; color: #555; padding: 8px; background: #fffde7; border: 1px solid #ffe082; margin-bottom: 16px; }
+  .btn-group { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+  hr { border: none; border-top: 1px solid #eee; margin: 12px 0; }
+</style>
+</head>
+<body>
+
+<h1 style="font-size:18px; margin-bottom:4px;">IMS — Test Client</h1>
+<p style="font-size:12px; color:#666; margin:0 0 16px;">Herramienta de prueba para endpoints del backend IMS</p>
+
+<div id="session-info">Estado: <strong id="session-status">No autenticado</strong></div>
+
+<!-- CONFIGURACIÓN -->
+<div class="card">
+  <h2>Configuración</h2>
+  <label>Base URL</label>
+  <input id="base-url" value="http://18.212.226.172" />
+</div>
+
+<!-- LOGIN -->
+<div class="card">
+  <h2>1. Login (con MFA)</h2>
+  <div class="row">
+    <div>
+      <label>Username (RUT)</label>
+      <input id="login-user" value="test_totp" />
+    </div>
+    <div>
+      <label>Password</label>
+      <input id="login-pass" type="password" value="Test1234!" />
+    </div>
+    <div style="flex: 0 0 160px">
+      <label>Código TOTP (6 dígitos)</label>
+      <input id="login-totp" placeholder="123456" maxlength="6" />
+    </div>
+  </div>
+  <button onclick="doLogin()">Login</button>
+  <button class="danger" onclick="doLogout()">Logout</button>
+  <div id="login-status"></div>
+  <div class="response" id="login-response" style="display:none"></div>
+</div>
+
+<!-- REQUEST GENÉRICO -->
+<div class="card">
+  <h2>2. Request manual</h2>
+  <div class="row" style="margin-bottom:8px">
+    <div style="flex: 0 0 110px">
+      <label>Método</label>
+      <select id="req-method">
+        <option>GET</option>
+        <option selected>POST</option>
+        <option>PATCH</option>
+        <option>DELETE</option>
+      </select>
+    </div>
+    <div>
+      <label>Endpoint</label>
+      <input id="req-url" value="/ims/api/atenciones/add/" />
+    </div>
+  </div>
+  <label>Body (JSON)</label>
+  <textarea id="req-body">{}</textarea>
+  <button onclick="doRequest()">Enviar</button>
+  <button class="secondary" onclick="formatBody()">Formatear JSON</button>
+  <div id="req-status"></div>
+  <div class="response" id="req-response" style="display:none"></div>
+</div>
+
+<!-- ENDPOINTS RÁPIDOS -->
+<div class="card">
+  <h2>3. Endpoints rápidos (GET)</h2>
+
+  <hr>
+  <label>Personal y ambulancias</label>
+  <div class="btn-group">
+    <button onclick="quickGet('/ims/api/personal/')">GET /personal</button>
+    <button onclick="quickGet('/ims/api/ambulancias/')">GET /ambulancias</button>
+  </div>
+
+  <hr>
+  <label>Pacientes</label>
+  <div class="btn-group">
+    <button onclick="quickGet('/ims/api/pacientes/')">GET /pacientes</button>
+  </div>
+
+  <hr>
+  <label>Grupos</label>
+  <div class="btn-group">
+    <button onclick="quickGet('/ims/api/grupo/')">GET /grupo (todos)</button>
+    <button onclick="quickGetParam('/ims/api/grupo/', 'group_id', '1')">GET /grupo?group_id=1</button>
+  </div>
+
+  <hr>
+  <label>Despachos</label>
+  <div class="btn-group">
+    <button onclick="quickGet('/ims/api/despachos/getall/')">GET /despachos/getall</button>
+    <button onclick="quickGet('/ims/api/despachos/get/')">GET /despachos/get (usuario)</button>
+    <button onclick="quickGetParam('/ims/api/despachos/getall/', 'despacho_id', '1')">GET /despachos/getall?despacho_id=1</button>
+  </div>
+
+  <hr>
+  <label>Atenciones</label>
+  <div class="btn-group">
+    <button onclick="quickGet('/ims/api/atenciones/')">GET /atenciones</button>
+    <button onclick="quickGetParam('/ims/api/atenciones/', 'id', '1')">GET /atenciones?id=1</button>
+  </div>
+
+  <div id="quick-status"></div>
+  <div class="response" id="quick-response" style="display:none"></div>
+</div>
+
+<!-- PAYLOADS PREDEFINIDOS -->
+<div class="card">
+  <h2>4. Cargar payload predefinido</h2>
+  <div class="btn-group">
+    <button class="secondary" onclick="loadPayload('crearDespacho')">Crear despacho</button>
+    <button class="secondary" onclick="loadPayload('asignarDespacho')">Asignar despacho</button>
+    <button class="secondary" onclick="loadPayload('registroAtencion')">Registro atención</button>
+    <button class="secondary" onclick="loadPayload('crearGrupo')">Crear grupo</button>
+    <button class="secondary" onclick="loadPayload('crearPaciente')">Crear paciente</button>
+  </div>
+  <p style="font-size:11px; color:#888; margin:4px 0 0">El payload se carga en el request manual — ajusta los IDs antes de enviar.</p>
+</div>
+
+<script>
+  let csrfToken = null
+
+  const PAYLOADS = {
+    crearDespacho: {
+      method: 'POST', url: '/ims/api/despachos/add/',
+      body: {
+        direccion_origen: 'Av. Libertad 123, Concepción',
+        direccion_destino: 'Hospital Regional de Concepción',
+        descripcion_llamado: 'Dolor torácico agudo',
+        paciente_rut: '20111111-1'
+      }
+    },
+    asignarDespacho: {
+      method: 'PATCH', url: '/ims/api/despachos/asignar/',
+      body: { ambulancia_id: 1, despacho_id: 1, grupo_id: 1 }
+    },
+    registroAtencion: {
+      method: 'POST', url: '/ims/api/atenciones/add/',
+      body: {
+        despacho: {
+          despacho_id: 1,
+          ambulancia_id: 1,
+          hora_salida: '2026-05-16T10:00:00Z',
+          hora_llegada: '2026-05-16T10:45:00Z'
+        },
+        signos_vitales: [{
+          hora: '1005',
+          presion_sistolica: 120, presion_diastolica: 80,
+          frecuencia_cardiaca: 75, saturacion_oxigeno: 98,
+          fr: 16, fio2: 21, temperatura: 36.5,
+          hgt: 100, gcs: 15, eva: 3,
+          observaciones: 'Paciente estable'
+        }],
+        preinforme: {
+          pre_informe: 'Paciente consciente y orientado',
+          motivo_llamado: 'Dolor torácico',
+          estado_paciente: 'estable'
+        },
+        cronologia: {
+          hora_llamada: '0950', despacho_movil: '0953',
+          llegada_qth1: '1002', salida_qth1: '1020',
+          llegada_qth2: '1043', salida_qth2: '1100',
+          categoria: 'C2'
+        },
+        insumos_utilizados: [{ insumo_id: 4, dosis: 10, observaciones: 'Paracetamol vía oral' }]
+      }
+    },
+    crearGrupo: {
+      method: 'POST', url: '/ims/api/grupo/',
+      body: { nombre_grupo: 'Delta', personal: [1, 2, 3] }
+    },
+    crearPaciente: {
+      method: 'POST', url: '/ims/api/pacientes/',
+      body: {
+        rut: '20999999-9',
+        full_name: 'Test Paciente',
+        date_birth: '1990-01-01',
+        direccion: 'Av. Test 123',
+        condicion_paciente: 'Sin antecedentes'
+      }
+    }
+  }
+
+  function base() { return document.getElementById('base-url').value.replace(/\/$/, '') }
+
+  function showResponse(elId, statusElId, code, data) {
+    const el = document.getElementById(elId)
+    const st = document.getElementById(statusElId)
+    el.style.display = 'block'
+    const ok = code >= 200 && code < 300
+    st.innerHTML = `<span class="status ${ok ? 'ok' : 'err'}">HTTP ${code}</span>`
+    try { el.textContent = JSON.stringify(JSON.parse(data), null, 2) }
+    catch { el.textContent = data }
+  }
+
+  async function getCsrf() {
+    const res = await fetch(base() + '/ims/api/login/', { method: 'GET', credentials: 'include' })
+    const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='))
+    if (cookie) csrfToken = cookie.trim().split('=')[1]
+    return csrfToken
+  }
+
+  async function doLogin() {
+    await getCsrf()
+    const user = document.getElementById('login-user').value
+    const pass = document.getElementById('login-pass').value
+    const totp = document.getElementById('login-totp').value
+    const headers = { 'Content-Type': 'application/json' }
+    if (csrfToken) headers['X-CSRFToken'] = csrfToken
+    const body = { username: user, password: pass }
+    if (totp) body.totp_code = totp
+    const res = await fetch(base() + '/ims/api/login/', {
+      method: 'POST', credentials: 'include', headers,
+      body: JSON.stringify(body)
+    })
+    const text = await res.text()
+    showResponse('login-response', 'login-status', res.status, text)
+    if (res.ok) {
+      const data = JSON.parse(text)
+      document.getElementById('session-status').textContent =
+        `Autenticado como ${user} — rol: ${data.role}`
+      const sc = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='))
+      if (sc) csrfToken = sc.trim().split('=')[1]
+    }
+  }
+
+  async function doLogout() {
+    document.getElementById('session-status').textContent = 'No autenticado'
+    csrfToken = null
+    document.cookie = 'sessionid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+    document.getElementById('login-response').style.display = 'none'
+    document.getElementById('login-status').innerHTML = ''
+  }
+
+  async function doRequest() {
+    const method   = document.getElementById('req-method').value
+    const url      = base() + document.getElementById('req-url').value
+    const bodyText = document.getElementById('req-body').value.trim()
+    const headers  = { 'Content-Type': 'application/json' }
+    if (csrfToken) headers['X-CSRFToken'] = csrfToken
+    const opts = { method, credentials: 'include', headers }
+    if (method !== 'GET' && bodyText) opts.body = bodyText
+    try {
+      const res  = await fetch(url, opts)
+      const text = await res.text()
+      showResponse('req-response', 'req-status', res.status, text)
+    } catch(e) {
+      document.getElementById('req-status').innerHTML = '<span class="status err">Error de red</span>'
+      document.getElementById('req-response').style.display = 'block'
+      document.getElementById('req-response').textContent = e.message
+    }
+  }
+
+  async function quickGet(path) {
+    const headers = {}
+    if (csrfToken) headers['X-CSRFToken'] = csrfToken
+    try {
+      const res  = await fetch(base() + path, { credentials: 'include', headers })
+      const text = await res.text()
+      showResponse('quick-response', 'quick-status', res.status, text)
+    } catch(e) {
+      document.getElementById('quick-status').innerHTML = '<span class="status err">Error de red</span>'
+      document.getElementById('quick-response').style.display = 'block'
+      document.getElementById('quick-response').textContent = e.message
+    }
+  }
+
+  async function quickGetParam(path, key, value) {
+    quickGet(`${path}?${key}=${value}`)
+  }
+
+  function loadPayload(name) {
+    const p = PAYLOADS[name]
+    if (!p) return
+    document.getElementById('req-method').value = p.method
+    document.getElementById('req-url').value    = p.url
+    document.getElementById('req-body').value   = JSON.stringify(p.body, null, 2)
+  }
+
+  function formatBody() {
+    try {
+      const el = document.getElementById('req-body')
+      el.value = JSON.stringify(JSON.parse(el.value), null, 2)
+    } catch { alert('JSON inválido') }
+  }
+</script>
+</body>
+</html>
