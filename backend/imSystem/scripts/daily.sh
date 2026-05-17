@@ -29,11 +29,11 @@ case "$ID" in
 esac
 
 # ==RUTAS==
-BASE_DIR="/home/${BASE_USER}/product"
-REPO_DIR="${BASE_DIR}/imSystem_Backend"
-APP_DIR="${REPO_DIR}/backend"
-DJANGO_APP="${APP_DIR}/imSystem"
-INSTALL_FILE="${APP_DIR}/install.txt"
+BASE_DIR="/home/${BASE_USER}/product/imSystem_Backend/backend"
+REPO_DIR="/home/${BASE_USER}/product/imSystem_Backend"
+APP_DIR="${BASE_DIR}"
+DJANGO_APP="${BASE_DIR}/imSystem"
+INSTALL_FILE="${BASE_DIR}/install.txt"
 PIP="${BASE_DIR}/env/bin/pip"
 PYTHON="${BASE_DIR}/env/bin/python3"
 
