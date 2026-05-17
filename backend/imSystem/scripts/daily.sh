@@ -28,10 +28,10 @@ case "$ID" in
         ;;
 esac
 
-BASE_DIR="/home/${BASE_USER}/product"
-APP_DIR="${BASE_DIR}/imSystem_Backend/backend"
-PIP="${BASE_DIR}/env/bin/pip"
-PYTHON="${BASE_DIR}/env/bin/python3"
+BASE_DIR="/home/${BASE_USER}/product/imSystem_Backend/backend"
+APP_DIR="${BASE_DIR}/imSystem"
+PIP="/home/${BASE_USER}/product/env/bin/pip"
+PYTHON="/home/${BASE_USER}/product/env/bin/python3"
 
 # ==VALIDACIONES PREVIAS==
 for path in "$BASE_DIR" "$APP_DIR" "${BASE_DIR}/install.txt" "${APP_DIR}/manage.py"; do

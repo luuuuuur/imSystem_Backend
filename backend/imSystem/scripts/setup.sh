@@ -41,7 +41,7 @@ case "$DISTRO_FAMILY" in
 esac
 
 BASE_DIR="/home/${BASE_USER}/product"
-APP_DIR="${BASE_DIR}/imSystem_Backend/backend/imSystem"
+APP_DIR="${BASE_DIR}/imSystem_Backend/backend"
 
 # ==VALIDACION DE DIRECTORIOS==
 if [ ! -d "$BASE_DIR" ]; then
