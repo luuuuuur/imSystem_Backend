@@ -18,9 +18,13 @@ class PersonalSerializer(serializers.ModelSerializer):
 
 
 class PacienteSerializer(serializers.Serializer):
-    nombre_completo  = serializers.CharField(required=False)
-    fecha_nacimiento = serializers.DateField(required=False)
-    rut = serializers.CharField(required=False)
+    rut              = serializers.CharField()
+    nombre_completo  = serializers.CharField(required=False, default='')
+    fecha_nacimiento = serializers.DateField(required=False, allow_null=True, default=None)
+    direccion        = serializers.CharField(required=False, default='')
+    condicion_paciente = serializers.CharField(required=False, default='')
+    telefono         = serializers.CharField(required=False, default='')
+    comuna           = serializers.CharField(required=False, default='')
 class ParamPacienteSerializer(serializers.Serializer):
     rut = serializers.CharField(max_length=12, required=True)
 

@@ -17,8 +17,8 @@ jobs:
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd ~/backend/
+            cd ~
             git pull origin main
-            cd imSystem/scripts
+            cd backend/imSystem/scripts
             bash daily.sh
             
