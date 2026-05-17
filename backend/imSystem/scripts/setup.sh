@@ -18,10 +18,9 @@ detect_distro_family() {
             echo "redhat"
             ;;
         *)
-            # Fallback via ID_LIKE
             case "${ID_LIKE:-}" in
-                *debian*)  echo "debian"  ;;
-                *rhel*|*centos*|*fedora*)  echo "redhat"  ;;
+                *debian*)               echo "debian"  ;;
+                *rhel*|*centos*|*fedora*) echo "redhat"  ;;
                 *)
                     echo "ERROR: Distribución no soportada: $ID"
                     exit 1
@@ -40,33 +39,49 @@ case "$DISTRO_FAMILY" in
     redhat)  BASE_USER="ec2-user"  ;;
 esac
 
+# ==RUTAS==
+# BASE_DIR  → raíz del proyecto (contiene env/ e install.txt)
+# REPO_DIR  → raíz del repositorio clonado
+# APP_DIR   → directorio de Django (contiene manage.py)
+# DJANGO_APP → directorio de la app Django (contiene .mikufile)
 BASE_DIR="/home/${BASE_USER}/product"
-APP_DIR="${BASE_DIR}/imSystem_Backend/backend"
+REPO_DIR="${BASE_DIR}/imSystem_Backend"
+APP_DIR="${REPO_DIR}/backend"
+DJANGO_APP="${APP_DIR}/imSystem"
+INSTALL_FILE="${APP_DIR}/install.txt"
+MIKUFILE="${DJANGO_APP}/.mikufile"
 
 # ==VALIDACION DE DIRECTORIOS==
 if [ ! -d "$BASE_DIR" ]; then
     echo "WARN: $BASE_DIR no existe. Creando..."
-    mkdir "$BASE_DIR"
+    mkdir -p "$BASE_DIR"
+fi
+
+if [ ! -d "$REPO_DIR" ]; then
+    echo "ERROR: $REPO_DIR no existe. El repositorio debe estar clonado antes de ejecutar este script."
+    exit 1
 fi
 
 if [ ! -d "$APP_DIR" ]; then
-    echo "ERROR: $APP_DIR no existe. El repositorio debe estar clonado antes de ejecutar este script."
+    echo "ERROR: $APP_DIR no existe. Abortando."
     exit 1
 fi
 
-if [ ! -f "${BASE_DIR}/install.txt" ]; then
-    echo "ERROR: ${BASE_DIR}/install.txt no existe. No se pueden instalar dependencias."
+if [ ! -f "$INSTALL_FILE" ]; then
+    echo "ERROR: $INSTALL_FILE no existe. No se pueden instalar dependencias."
     exit 1
 fi
-#mkdir -p /var/ims/documentos
-#chown "${BASE_USER}:${BASE_USER}" /var/ims/documentos
-#chmod 750 /var/ims/documentos
+
+if [ ! -f "$MIKUFILE" ]; then
+    echo "ERROR: $MIKUFILE no existe. Crea el archivo de variables de entorno antes de correr este script."
+    exit 1
+fi
 
 # ==FUNCIONES POR FAMILIA==
 
 setup_debian() {
     echo "=== [Debian/Ubuntu] Actualizando repositorios ==="
-    sudo apt-get update 
+    sudo apt-get update
 
     echo "=== [Debian/Ubuntu] Configurando nginx ==="
     if [ ! -f /usr/sbin/nginx ]; then
@@ -80,7 +95,7 @@ server {
     listen 80;
     server_name ${SERVER_IP};
     location /static/ {
-        alias ${APP_DIR}/staticfiles/;
+        alias ${DJANGO_APP}/staticfiles/;
     }
     location / {
         proxy_pass http://127.0.0.1:8000;
@@ -115,7 +130,7 @@ server {
     listen 80;
     server_name ${SERVER_IP};
     location /static/ {
-        alias ${APP_DIR}/staticfiles/;
+        alias ${DJANGO_APP}/staticfiles/;
     }
     location / {
         proxy_pass http://127.0.0.1:8000;
@@ -125,7 +140,6 @@ server {
     }
 }
 EOF
-        # SELinux: necesario para que nginx pueda hacer proxy a procesos locales
         if command -v setsebool &>/dev/null; then
             echo "=== Habilitando SELinux boolean para nginx proxy ==="
             sudo setsebool -P httpd_can_network_connect 1
@@ -143,7 +157,7 @@ case "$DISTRO_FAMILY" in
     redhat)  setup_redhat  ;;
 esac
 
-# ==NGINX ARRANQUE (común)==
+# ==NGINX ARRANQUE==
 sudo nginx -t
 sudo systemctl daemon-reload
 sudo systemctl enable nginx
@@ -159,20 +173,18 @@ if [ ! -d "${BASE_DIR}/env" ]; then
     python3 -m venv env
 fi
 
-echo "=== Instalando dependencias desde install.txt ==="
-"${BASE_DIR}/env/bin/pip" install -r "${BASE_DIR}/install.txt"
-echo "=== Generando archivos estáticos ==="
-"${BASE_DIR}/env/bin/python" "${APP_DIR}/manage.py" collectstatic --noinput
-# ==ENVIRONMENT FILE==
-if [ ! -f "${APP_DIR}/.mikufile" ]; then
-    echo "ERROR: ${APP_DIR}/.mikufile no existe. Crea el archivo de variables de entorno antes de correr este script."
-    exit 1
-fi
+echo "=== Instalando dependencias ==="
+"${BASE_DIR}/env/bin/pip" install -r "$INSTALL_FILE"
 
+echo "=== Generando archivos estáticos ==="
+"${BASE_DIR}/env/bin/python" "${DJANGO_APP}/manage.py" collectstatic --noinput
+
+# ==ENVIRONMENT FILE==
 sudo mkdir -p /etc/gunicorn
-sudo cp "${APP_DIR}/imSystem/.mikufile" /etc/gunicorn/.mikufile
-sudo chown root:root /etc/gunicorn/.mikufile
-sudo chmod 640 /etc/gunicorn/.mikufile
+sudo cp "$MIKUFILE" /etc/gunicorn/ims.env
+sudo chown root:root /etc/gunicorn/ims.env
+sudo chmod 640 /etc/gunicorn/ims.env
+
 # ==GUNICORN SERVICE==
 if [ ! -f /etc/systemd/system/gunicorn.service ]; then
     echo "=== Configurando gunicorn.service ==="
@@ -183,8 +195,8 @@ After=network.target
 
 [Service]
 User=${BASE_USER}
-WorkingDirectory=${APP_DIR}
-EnvironmentFile=/etc/gunicorn/.mikufile
+WorkingDirectory=${DJANGO_APP}
+EnvironmentFile=/etc/gunicorn/ims.env
 ExecStart=${BASE_DIR}/env/bin/gunicorn \\
     backend_config.wsgi:application \\
     --bind 127.0.0.1:8000 \\

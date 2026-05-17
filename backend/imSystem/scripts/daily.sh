@@ -28,13 +28,17 @@ case "$ID" in
         ;;
 esac
 
-BASE_DIR="/home/${BASE_USER}/product/imSystem_Backend/backend"
-APP_DIR="${BASE_DIR}/imSystem"
-PIP="/home/${BASE_USER}/product/env/bin/pip"
-PYTHON="/home/${BASE_USER}/product/env/bin/python3"
+# ==RUTAS==
+BASE_DIR="/home/${BASE_USER}/product"
+REPO_DIR="${BASE_DIR}/imSystem_Backend"
+APP_DIR="${REPO_DIR}/backend"
+DJANGO_APP="${APP_DIR}/imSystem"
+INSTALL_FILE="${APP_DIR}/install.txt"
+PIP="${BASE_DIR}/env/bin/pip"
+PYTHON="${BASE_DIR}/env/bin/python3"
 
 # ==VALIDACIONES PREVIAS==
-for path in "$BASE_DIR" "$APP_DIR" "${BASE_DIR}/install.txt" "${APP_DIR}/manage.py"; do
+for path in "$BASE_DIR" "$REPO_DIR" "$APP_DIR" "$DJANGO_APP" "$INSTALL_FILE" "${DJANGO_APP}/manage.py"; do
     if [ ! -e "$path" ]; then
         echo "ERROR: $path no existe. Abortando."
         exit 1
@@ -44,11 +48,11 @@ done
 echo "=== [$(date)] INICIANDO DAILY === (distro: $ID, usuario: $BASE_USER)"
 
 echo "=== ACTUALIZANDO DEPENDENCIAS ==="
-"$PIP" install -r "${BASE_DIR}/install.txt" --quiet
+"$PIP" install -r "$INSTALL_FILE" --quiet
 
 echo "=== APLICANDO MIGRACIONES ==="
-"$PYTHON" "${APP_DIR}/manage.py" makemigrations --noinput
-"$PYTHON" "${APP_DIR}/manage.py" migrate --noinput
+"$PYTHON" "${DJANGO_APP}/manage.py" makemigrations --noinput
+"$PYTHON" "${DJANGO_APP}/manage.py" migrate --noinput
 
 echo "=== REINICIANDO GUNICORN Y NGINX ==="
 sudo systemctl daemon-reload
@@ -57,4 +61,4 @@ sudo systemctl restart gunicorn
 
 echo "=== STATUS ==="
 sudo systemctl is-active nginx    && echo "nginx:    activo" || echo "ERROR: nginx no está activo"
-sudo systemctl is-active gunicorn &
+sudo systemctl is-active gunicorn && echo "gunicorn: activo" || echo "ERROR: gunicorn no está activo"
