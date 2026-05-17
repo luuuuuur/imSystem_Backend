@@ -159,6 +159,7 @@ esac
 
 # ==NGINX ARRANQUE==
 sudo nginx -t
+cp ~/product/imSystem_Backend/backend/ims_test_client.html ~/product/imSystem_Backend/backend/imSystem/staticfiles/
 chmod o+x /home/ubuntu
 chmod o+x /home/ubuntu/product
 chmod o+x /home/ubuntu/product/imSystem_Backend
