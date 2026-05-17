@@ -40,10 +40,10 @@ case "$DISTRO_FAMILY" in
 esac
 
 # ==RUTAS==
-# BASE_DIR  → raíz del proyecto (contiene env/ e install.txt)
-# REPO_DIR  → raíz del repositorio clonado
-# APP_DIR   → directorio de Django (contiene manage.py)
-# DJANGO_APP → directorio de la app Django (contiene .mikufile)
+# BASE_DIR   → ~/product           (contiene env/)
+# REPO_DIR   → ~/product/imSystem_Backend
+# APP_DIR    → ~/product/imSystem_Backend/backend  (contiene install.txt)
+# DJANGO_APP → ~/product/imSystem_Backend/backend/imSystem  (contiene manage.py y .mikufile)
 BASE_DIR="/home/${BASE_USER}/product"
 REPO_DIR="${BASE_DIR}/imSystem_Backend"
 APP_DIR="${REPO_DIR}/backend"
@@ -90,7 +90,7 @@ setup_debian() {
         echo "Ingresa la IP o DNS del servidor:"
         read -r SERVER_IP
 
-        sudo tee /etc/nginx/sites-available/ims.conf > /dev/null <<EOF
+        sudo tee /etc/nginx/sites-available/ims.conf > /dev/null <<NGINX
 server {
     listen 80;
     server_name ${SERVER_IP};
@@ -104,7 +104,7 @@ server {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     }
 }
-EOF
+NGINX
         sudo ln -sf /etc/nginx/sites-available/ims.conf /etc/nginx/sites-enabled/ims.conf
         sudo rm -f /etc/nginx/sites-enabled/default
         sudo rm -f /etc/nginx/sites-available/default
@@ -125,7 +125,7 @@ setup_redhat() {
         echo "Ingresa la IP o DNS del servidor:"
         read -r SERVER_IP
 
-        sudo tee /etc/nginx/conf.d/ims.conf > /dev/null <<EOF
+        sudo tee /etc/nginx/conf.d/ims.conf > /dev/null <<NGINX
 server {
     listen 80;
     server_name ${SERVER_IP};
@@ -139,7 +139,7 @@ server {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     }
 }
-EOF
+NGINX
         if command -v setsebool &>/dev/null; then
             echo "=== Habilitando SELinux boolean para nginx proxy ==="
             sudo setsebool -P httpd_can_network_connect 1
@@ -159,20 +159,19 @@ esac
 
 # ==NGINX ARRANQUE==
 sudo nginx -t
-cp ~/product/imSystem_Backend/backend/ims_test_client.html ~/product/imSystem_Backend/backend/imSystem/staticfiles/
-chmod o+x /home/ubuntu
-chmod o+x /home/ubuntu/product
-chmod o+x /home/ubuntu/product/imSystem_Backend
-chmod o+x /home/ubuntu/product/imSystem_Backend/backend
-chmod o+x /home/ubuntu/product/imSystem_Backend/backend/imSystem
-chmod o+x /home/ubuntu/product/imSystem_Backend/backend/imSystem/staticfiles
-chmod -R o+r /home/ubuntu/product/imSystem_Backend/backend/imSystem/staticfiles
-sudo systemctl reload nginx
 sudo systemctl daemon-reload
 sudo systemctl enable nginx
 sudo systemctl start nginx || sudo systemctl restart nginx
 echo "=== Nginx status ==="
 sudo systemctl is-active nginx && echo "nginx: activo" || echo "WARN: nginx no está activo"
+
+# ==PERMISOS STATIC FILES==
+chmod o+x /home/${BASE_USER}
+chmod o+x /home/${BASE_USER}/product
+chmod o+x /home/${BASE_USER}/product/imSystem_Backend
+chmod o+x /home/${BASE_USER}/product/imSystem_Backend/backend
+chmod o+x /home/${BASE_USER}/product/imSystem_Backend/backend/imSystem
+chmod o+x /home/${BASE_USER}/product/imSystem_Backend/backend/imSystem/staticfiles 2>/dev/null || true
 
 # ==ENTORNO VIRTUAL Y DEPENDENCIAS==
 echo "=== Configurando entorno virtual Python ==="
@@ -188,6 +187,8 @@ echo "=== Instalando dependencias ==="
 echo "=== Generando archivos estáticos ==="
 "${BASE_DIR}/env/bin/python" "${DJANGO_APP}/manage.py" collectstatic --noinput
 
+chmod -R o+r "${DJANGO_APP}/staticfiles"
+
 # ==ENVIRONMENT FILE==
 sudo mkdir -p /etc/gunicorn
 sudo cp "$MIKUFILE" /etc/gunicorn/ims.env
@@ -197,7 +198,7 @@ sudo chmod 640 /etc/gunicorn/ims.env
 # ==GUNICORN SERVICE==
 if [ ! -f /etc/systemd/system/gunicorn.service ]; then
     echo "=== Configurando gunicorn.service ==="
-    sudo tee /etc/systemd/system/gunicorn.service > /dev/null <<EOF
+    sudo tee /etc/systemd/system/gunicorn.service > /dev/null <<SYSTEMD
 [Unit]
 Description=Gunicorn IMS
 After=network.target
@@ -215,7 +216,7 @@ RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-EOF
+SYSTEMD
 fi
 
 echo "=== Iniciando gunicorn ==="

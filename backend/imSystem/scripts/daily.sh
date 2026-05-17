@@ -29,11 +29,15 @@ case "$ID" in
 esac
 
 # ==RUTAS==
+# BASE_DIR   → ~/product           (contiene env/)
+# REPO_DIR   → ~/product/imSystem_Backend
+# APP_DIR    → ~/product/imSystem_Backend/backend  (contiene install.txt)
+# DJANGO_APP → ~/product/imSystem_Backend/backend/imSystem  (contiene manage.py y .mikufile)
 BASE_DIR="/home/${BASE_USER}/product"
-REPO_DIR="/home/${BASE_USER}/product/imSystem_Backend"
-APP_DIR="${BASE_DIR}"
-DJANGO_APP="${BASE_DIR}/imSystem"
-INSTALL_FILE="${BASE_DIR}/install.txt"
+REPO_DIR="${BASE_DIR}/imSystem_Backend"
+APP_DIR="${REPO_DIR}/backend"
+DJANGO_APP="${APP_DIR}/imSystem"
+INSTALL_FILE="${APP_DIR}/install.txt"
 PIP="${BASE_DIR}/env/bin/pip"
 PYTHON="${BASE_DIR}/env/bin/python3"
 
