@@ -29,7 +29,7 @@ case "$ID" in
 esac
 
 # ==RUTAS==
-BASE_DIR="/home/${BASE_USER}/product/imSystem_Backend/backend"
+BASE_DIR="/home/${BASE_USER}/product"
 REPO_DIR="/home/${BASE_USER}/product/imSystem_Backend"
 APP_DIR="${BASE_DIR}"
 DJANGO_APP="${BASE_DIR}/imSystem"
