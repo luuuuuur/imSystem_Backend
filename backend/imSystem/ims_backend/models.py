@@ -44,7 +44,7 @@ class SuscritosAGrupo(models.Model):
             models.Index(fields= ['grupo', 'fecha_salida']),
             models.Index(fields= ['grupo','personal'])
         ]
-
+#workflow test
 class Paciente(models.Model):
     rut = models.CharField(max_length=12, unique=True)
     nombre_completo = models.CharField(max_length=255)
