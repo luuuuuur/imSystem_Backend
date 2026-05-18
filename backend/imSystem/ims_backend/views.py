@@ -608,8 +608,7 @@ class AsignarDespacho(APIView):
                         personal.append({'personal_id':members.personal.id,
                                          'personal_rut': members.personal.rut,
                                          'personal_name':members.personal.full_name})
-                    despacho.estado = "asignado"
-                    despacho.save(update_fields=["asignado"])
+                    
                     return Response({'success':'success', 'despacho_data':{
                         'id':valid_data['despacho_id'],
                         'grupo':{
