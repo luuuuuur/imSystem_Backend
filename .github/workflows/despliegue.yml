@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy SSH Server 2
+      - name: Deploy test_deploy_repo_reformed
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{secrets.SERVER_2}}
