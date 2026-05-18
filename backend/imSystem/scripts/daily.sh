@@ -59,6 +59,7 @@ echo "=== APLICANDO MIGRACIONES ==="
 "$PYTHON" "${DJANGO_APP}/manage.py" migrate --noinput
 
 echo "=== REINICIANDO GUNICORN Y NGINX ==="
+cp {$APP_DIR}/ims_test_client.html ${DJANGO_APP}/staticfiles
 sudo systemctl daemon-reload
 sudo systemctl restart nginx
 sudo systemctl restart gunicorn

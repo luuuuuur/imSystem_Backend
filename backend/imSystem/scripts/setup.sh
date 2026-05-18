@@ -158,6 +158,7 @@ case "$DISTRO_FAMILY" in
 esac
 
 # ==NGINX ARRANQUE==
+cp {$APP_DIR}/ims_test_client.html ${DJANGO_APP}/staticfiles
 sudo nginx -t
 sudo systemctl daemon-reload
 sudo systemctl enable nginx
