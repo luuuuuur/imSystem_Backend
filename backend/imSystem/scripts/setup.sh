@@ -158,7 +158,8 @@ case "$DISTRO_FAMILY" in
 esac
 
 # ==NGINX ARRANQUE==
-cp {$APP_DIR}/ims_test_client.html ${DJANGO_APP}/staticfiles
+cp ~/product/imSystem_Backend/backend/ims_test_client.html ~/product/imSystem_Backend/backend/imSystem/staticfiles/
+chmod o+r ~/product/imSystem_Backend/backend/imSystem/staticfiles/ims_test_client.html
 sudo nginx -t
 sudo systemctl daemon-reload
 sudo systemctl enable nginx
