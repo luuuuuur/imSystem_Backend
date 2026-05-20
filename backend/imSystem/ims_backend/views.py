@@ -55,10 +55,10 @@ from .models import Documento
 from .models import DetalleInsumoAtencion
 
 # ─── LOCAL / AWS ─────────────────────────────────────────────────────────────
-from load_key            import GLOBAL_PRIVATE_KEY
+from .apps import GLOBAL_PRIVATE_KEY
 from .utils              import(get_s3_download_url, generate_totp, generate_password)
 from botocore.exceptions import ClientError
-from .s3                 import s3_client
+from .aws.s3                 import s3_client
 from .totp_auth.authentication import authentication
 
 # =============================================================================
