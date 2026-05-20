@@ -5,7 +5,8 @@ class ImsBackendConfig(AppConfig):
     name = 'ims_backend'
     def ready(self):
         global GLOBAL_PRIVATE_KEY
-        GLOBAL_PRIVATE_KEY = Secrets.secret_key()
+        json = Secrets.secret_key()
+        GLOBAL_PRIVATE_KEY = json["private_key"]
         load_pem_private_key(GLOBAL_PRIVATE_KEY, password=secrets["PASSWORD_KEY"])
 
         
