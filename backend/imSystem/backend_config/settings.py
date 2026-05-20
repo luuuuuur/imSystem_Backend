@@ -32,7 +32,7 @@ SECRET_KEY = secrets["SECRET_KEY"]
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["956.duckdns.org"]
 
 
 # Application definition
@@ -85,13 +85,15 @@ WSGI_APPLICATION = 'backend_config.wsgi.application'
 
 #CORS
 CORS_ALLOW_ALL_ORIGINS=False
-CORS_ALLOWED_ORIGINS=[
-"http://localhost:8081",
-"http://127.0.0.1:8081",
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8081",
+    "http://127.0.0.1:8081",
+    "https://956.duckdns.org",
 ]
 CORS_ALLOW_CREDENTIALS=True
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8081",
+    "https://956.duckdns.org",
 ]
 
 # Database
@@ -157,8 +159,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 3
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_SAVE_EVERY_REQUEST = True
-IMS_DOCUMENTOS_DIR = os.getenv("UPLOAD_TO")
 #DISCOMMENT THIS WHEN TO DEOPLOY IN PROD
-#SESSION_COOKIE_SECURE =True
-#SESSION_COOKIE_HTTPONLY =True
-#CSFR_COOKIE_SECURE=True
+SESSION_COOKIE_SECURE =True
+SESSION_COOKIE_HTTPONLY =True
+CSFR_COOKIE_SECURE=True
