@@ -86,24 +86,69 @@ setup_debian() {
     echo "=== [Debian/Ubuntu] Configurando nginx ==="
     if [ ! -f /usr/sbin/nginx ]; then
         sudo apt-get install -y nginx
-
-        echo "Ingresa la IP o DNS del servidor:"
-        read -r SERVER_IP
-
         sudo tee /etc/nginx/sites-available/ims.conf > /dev/null <<NGINX
+# Rate limiting — definido fuera del bloque server
+limit_req_zone \$binary_remote_addr zone=login:10m rate=5r/m;
+
 server {
-    listen 80;
-    server_name ${SERVER_IP};
+    server_name 956.duckdns.org;
+
+    # Ocultar versión de Nginx
+    server_tokens off;
+
+    # Headers de seguridad
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "same-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    
     location /static/ {
-        alias ${DJANGO_APP}/staticfiles/;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self';" always;
+        alias /home/ubuntu/product/imSystem_Backend/backend/imSystem/staticfiles/;
+
     }
-    location / {
+# Rate limiting solo en login
+
+    location /ims/api/login/ {
+        limit_req zone=login burst=3 nodelay;
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+
+        proxy_set_header X-Forwarded-Proto \$scheme;
+
     }
+
+    location / {
+
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    listen 443 ssl;
+    http2 on; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/956.duckdns.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/956.duckdns.org/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 }
+server {
+    if (\$host = 956.duckdns.org) {
+        return 301 https://\$host\$request_uri;
+    } # managed by Certbot
+
+
+    listen 80;
+    server_name 956.duckdns.org;
+    return 404; # managed by Certbot
+
+
+}
+
 NGINX
         sudo ln -sf /etc/nginx/sites-available/ims.conf /etc/nginx/sites-enabled/ims.conf
         sudo rm -f /etc/nginx/sites-enabled/default
@@ -140,24 +185,69 @@ setup_redhat() {
     echo "=== [RedHat/Amazon Linux] Configurando nginx ==="
     if [ ! -f /usr/sbin/nginx ]; then
         sudo dnf install -y nginx 2>/dev/null || sudo yum install -y nginx
-
-        echo "Ingresa la IP o DNS del servidor:"
-        read -r SERVER_IP
-
         sudo tee /etc/nginx/conf.d/ims.conf > /dev/null <<NGINX
+# Rate limiting — definido fuera del bloque server
+limit_req_zone \$binary_remote_addr zone=login:10m rate=5r/m;
+
 server {
-    listen 80;
-    server_name ${SERVER_IP};
+    server_name 956.duckdns.org;
+
+    # Ocultar versión de Nginx
+    server_tokens off;
+
+    # Headers de seguridad
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "same-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    
     location /static/ {
-        alias ${DJANGO_APP}/staticfiles/;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self';" always;
+        alias /home/ubuntu/product/imSystem_Backend/backend/imSystem/staticfiles/;
+
     }
-    location / {
+# Rate limiting solo en login
+
+    location /ims/api/login/ {
+        limit_req zone=login burst=3 nodelay;
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+
+        proxy_set_header X-Forwarded-Proto \$scheme;
+
     }
+
+    location / {
+
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    listen 443 ssl;
+    http2 on; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/956.duckdns.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/956.duckdns.org/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 }
+server {
+    if (\$host = 956.duckdns.org) {
+        return 301 https://\$host\$request_uri;
+    } # managed by Certbot
+
+
+    listen 80;
+    server_name 956.duckdns.org;
+    return 404; # managed by Certbot
+
+
+}
+
 NGINX
         if command -v setsebool &>/dev/null; then
             echo "=== Habilitando SELinux boolean para nginx proxy ==="
@@ -246,7 +336,6 @@ After=network.target
 [Service]
 User=${BASE_USER}
 WorkingDirectory=${DJANGO_APP}
-EnvironmentFile=/etc/gunicorn/ims.env
 ExecStart=${BASE_DIR}/env/bin/gunicorn \\
     backend_config.wsgi:application \\
     --bind 127.0.0.1:8000 \\
