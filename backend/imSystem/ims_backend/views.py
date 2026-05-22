@@ -147,7 +147,7 @@ class Login(EnsureCsrfMixin, APIView):
                     else:
                             login(request,user)
                             request.session['mfa_verified'] = True
-                            return Response({'success':'success', 'role': user.rol.nombre_rol}, status=status.HTTP_200_OK)
+                            return Response({'success':'success', 'sessionid':request.session.session_key,'role': user.rol.nombre_rol}, status=status.HTTP_200_OK)
                 else: 
                     return Response({"error":'TOTP failed'}, status=status.HTTP_401_UNAUTHORIZED)
             except ValueError:
