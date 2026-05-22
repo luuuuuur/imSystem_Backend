@@ -2,6 +2,7 @@ use pyo3::prelude::*;
 /// python json module in rust
 #[pymodule]
 mod rustjson {
+    use serde_json::*;
     use pyo3::prelude::*;
     use aws_sdk_secretsmanager::Client;
     use ed25519_dalek::{SigningKey,Signer};
@@ -29,7 +30,13 @@ mod rustjson {
                     .await
                     .expect("Failed to LOAD the key from AWS");
 
-                let pem = response.secret_string().expect("Missing SECRET_KEY");
+                let secret_json_str = response
+                                            .secret_string()
+                                            .expect("El secreto no contiene un string válido");
+
+                let json: Value = serde_json::from_str(&secret_json_str).expect("Failed to parse json");
+
+                let pem = json["private_key"].as_str().expect("Failed to parse JSON value to -> STRING");
                 SigningKey::from_pkcs8_pem(pem).expect("Failed to parse the key")
             })
         })
