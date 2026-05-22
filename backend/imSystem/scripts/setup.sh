@@ -173,7 +173,7 @@ Restart=always
 [Install]
 WantedBy=multi-user.target
 EOF
-    sudo systemctl enable redis
+    sudo systemctl enable redis || true
     sudo systemctl start redis
     redis-cli ping
 }
@@ -274,7 +274,7 @@ Restart=always
 [Install]
 WantedBy=multi-user.target
 EOF
-    sudo systemctl enable redis
+    sudo systemctl enable redis || true
     sudo systemctl start redis
     redis-cli ping
 }   
