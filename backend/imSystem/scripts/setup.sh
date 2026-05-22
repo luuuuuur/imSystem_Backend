@@ -180,7 +180,7 @@ User=${BASE_USER}
 WorkingDirectory=${DJANGO_APP}
 ExecStart=${BASE_DIR}/env/bin/celery -A backend_config worker --loglevel=info
 Restart=always
-
+ 
 [Install]
 WantedBy=multi-user.target
 EOF
