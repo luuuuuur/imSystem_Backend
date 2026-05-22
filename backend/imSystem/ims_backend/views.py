@@ -146,6 +146,7 @@ class Login(EnsureCsrfMixin, APIView):
                             return Response({'error':'User with no role assigned'}, status=status.HTTP_403_FORBIDDEN)
                     else:
                             login(request,user)
+                            request.session.save()
                             request.session['mfa_verified'] = True
                             return Response({'success':'success', 'sessionid':request.session.session_key,'role': user.rol.nombre_rol}, status=status.HTTP_200_OK)
                 else: 
