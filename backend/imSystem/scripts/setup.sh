@@ -223,7 +223,7 @@ fi
 
 echo "=== Instalando dependencias ==="
 "${BASE_DIR}/env/bin/pip" install -r "$INSTALL_FILE"
-
+"${BASE_DIR}/env/bin/pip" install "${APP_DIR}"/wheels/rustjson-*.whl
 echo "=== Generando archivos estáticos ==="
 "${BASE_DIR}/env/bin/python" "${DJANGO_APP}/manage.py" collectstatic --noinput
 
