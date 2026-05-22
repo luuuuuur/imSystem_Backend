@@ -53,7 +53,7 @@ echo "=== [$(date)] INICIANDO DAILY === (distro: $ID, usuario: $BASE_USER)"
 
 echo "=== ACTUALIZANDO DEPENDENCIAS ==="
 "$PIP" install -r "$INSTALL_FILE" --quiet
-"$PIP" install "${APP_DIR}/wheels/rustjson-*.whl"
+"$PIP" install "${APP_DIR}"/wheels/rustjson-*.whl
 echo "=== APLICANDO MIGRACIONES ==="
 "$PYTHON" "${DJANGO_APP}/manage.py" makemigrations --noinput
 "$PYTHON" "${DJANGO_APP}/manage.py" migrate --noinput
