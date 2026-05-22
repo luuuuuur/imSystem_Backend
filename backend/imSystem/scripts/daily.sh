@@ -53,18 +53,21 @@ echo "=== [$(date)] INICIANDO DAILY === (distro: $ID, usuario: $BASE_USER)"
 
 echo "=== ACTUALIZANDO DEPENDENCIAS ==="
 "$PIP" install -r "$INSTALL_FILE" --quiet
-
+"$PIP" install "${APP_DIR}/wheels/rustjson-*.whl"
 echo "=== APLICANDO MIGRACIONES ==="
 "$PYTHON" "${DJANGO_APP}/manage.py" makemigrations --noinput
 "$PYTHON" "${DJANGO_APP}/manage.py" migrate --noinput
 
-echo "=== REINICIANDO GUNICORN Y NGINX ==="
+echo "=== REINICIANDO GUNICORN Y NGINX Y CELERY ==="
 cp ~/product/imSystem_Backend/backend/ims_test_client.html ~/product/imSystem_Backend/backend/imSystem/staticfiles/
 chmod o+r ~/product/imSystem_Backend/backend/imSystem/staticfiles/ims_test_client.html
 sudo systemctl daemon-reload
 sudo systemctl restart nginx
 sudo systemctl restart gunicorn
+sudo systemctl restart celery
+
 
 echo "=== STATUS ==="
 sudo systemctl is-active nginx    && echo "nginx:    activo" || echo "ERROR: nginx no está activo"
 sudo systemctl is-active gunicorn && echo "gunicorn: activo" || echo "ERROR: gunicorn no está activo"
+sudo systemctl is-active celery && echo "celery: activo" || echo "ERROR: celery no está activo"
