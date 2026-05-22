@@ -112,6 +112,25 @@ NGINX
 
     echo "=== [Debian/Ubuntu] Instalando dependencias Python ==="
     sudo apt-get install -y python3-pip python3-venv git
+    echo "=== INSTALANDO CELERY==="
+    sudo apt install redis -y
+    sudo tee /etc/systemd/system/celery.service > /dev/null <<EOF
+[Unit]
+Description=Celery Worker
+After=network.target redis.service
+
+[Service]
+User=${BASE_USER}
+WorkingDirectory=${DJANGO_APP}
+ExecStart=${BASE_DIR}/env/bin/celery -A backend_config worker --loglevel=info
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    sudo systemctl enable redis
+    sudo systemctl start redis
+    redis-cli ping
 }
 
 setup_redhat() {
@@ -148,8 +167,27 @@ NGINX
 
     echo "=== [RedHat/Amazon Linux] Instalando dependencias Python ==="
     sudo dnf install -y python3 python3-pip git 2>/dev/null || \
-        sudo yum install -y python3 python3-pip git
-}
+    sudo yum install -y python3 python3-pip git
+    echo "===INSTALANDO CELERY==="
+    sudo dnf install redis -y
+    sudo tee /etc/systemd/system/celery.service > /dev/null<<EOF
+[Unit]
+Description=Celery Worker
+After=network.target redis.service
+
+[Service]
+User=${BASE_USER}
+WorkingDirectory=${DJANGO_APP}
+ExecStart=${BASE_DIR}/env/bin/celery -A backend_config worker --loglevel=info
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    sudo systemctl enable redis
+    sudo systemctl start redis
+    redis-cli ping
+}   
 
 # ==DISPATCH==
 case "$DISTRO_FAMILY" in
@@ -225,7 +263,10 @@ echo "=== Iniciando gunicorn ==="
 sudo systemctl daemon-reload
 sudo systemctl enable gunicorn
 sudo systemctl start gunicorn || sudo systemctl restart gunicorn
-
+echo "===STATUS CELERY==="
+sudo systemctl enable celery
+sudo systemctl start celery
+sudo systemctl is-active celery && echo "celery: activo" || echo "WARN: celery no está activo"
 echo "=== Gunicorn status ==="
 sudo systemctl is-active gunicorn && echo "gunicorn: activo" || echo "WARN: gunicorn no está activo"
 echo "=== Deploy finalizado en $ID ($DISTRO_FAMILY) como usuario $BASE_USER ==="

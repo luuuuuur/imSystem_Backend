@@ -1,7 +1,7 @@
 # ─── DJANGO REST FRAMEWORK ───────────────────────────────────────────────────
 from rest_framework.views       import APIView
-from rest_framework.response    import Response
 from rest_framework             import status
+from rest_framework.response    import Response
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.permissions import AllowAny
 
@@ -17,7 +17,6 @@ from django.conf                    import settings
 from django.db.models               import F
 
 # ─── STDLIB ──────────────────────────────────────────────────────────────────
-import hashlib
 import json
 import decimal
 import datetime
@@ -55,12 +54,11 @@ from .models import Documento
 from .models import DetalleInsumoAtencion
 
 # ─── LOCAL / AWS ─────────────────────────────────────────────────────────────
-from .apps import GLOBAL_PRIVATE_KEY
 from .utils              import(get_s3_download_url, generate_totp, generate_password)
 from botocore.exceptions import ClientError
-from .aws.s3                 import s3_client
+from task                   import enviar_s3
 from .totp_auth.authentication import authentication
-
+import rustjson
 # =============================================================================
 # PERMISOS PERSONALIZADOS
 # =============================================================================
@@ -330,22 +328,15 @@ class RegistroAtencionAPI(APIView):
                         "insumos_utilizados":list(DetalleInsumoAtencion.objects.filter(atencion=atencion)
                                                    .values('insumo__nombre_insumo','dosis','observaciones')),
                     }
-                    prepared_data = json.dumps(document, sort_keys=True, ensure_ascii=False, cls=CustomEncoder)
-                    sha_256 = hashlib.sha256(prepared_data.encode('utf-8')).digest()
-                    sha_256_hex = sha_256.hex()
-                    sign = GLOBAL_PRIVATE_KEY.sign(sha_256)
-                    firma_b64 = base64.b64encode(sign).decode('utf-8')
-                    atencion.sello_electronico= f"{sha_256_hex}:{firma_b64}"
-                    atencion.estado_sello="Firmado"
-                    atencion.save(update_fields=["sello_electronico","estado_sello"])
-                    document["atencion"] = model_to_dict(atencion)
-                    document["Hash"]= sha_256_hex
-                    document["Firma"]= firma_b64
-                    s3_key_json = f"documentos/{sha_256_hex}.json"
-                    s3_key_sig  = f"documentos/{sha_256_hex}.sig"
+                    prepared_data = json.dumps(document, sort_keys=True, ensure_ascii=False, cls=CustomEncoder).encode('utf-8')
+                    hash_bytes,signature = rustjson.data(prepared_data)
+                    document["Hash"]= hash_bytes.hex()
+                    document["Firma"]= base64.b64encode(signature).decode()
+                    s3_key_json = f"documentos/{document["Hash"]}.json"
+                    s3_key_sig  = f"documentos/{document["Hash"]}.sig"
                     Documento.objects.create(archivo_s3_key=s3_key_json,
                                              firma_s3_key=s3_key_sig,
-                                             archivo_hash=sha_256_hex,
+                                             archivo_hash=hash_bytes.hex(),
                                              atencion=atencion)
                     despacho.estado = "finalizado"
                     despacho.save(update_fields=["estado"])
@@ -354,21 +345,9 @@ class RegistroAtencionAPI(APIView):
             except Exception as e:
                 return Response({"error":str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             try:
-                bucket_name = settings.AWS_STORAGE_BUCKET_NAME
                 file_json = json.dumps(document, ensure_ascii=False, cls=CustomEncoder)
-                s3_client.put_object(
-                            Bucket=bucket_name,
-                            Key=f"documentos/{document["Hash"]}.json",
-                            Body=file_json.encode('utf-8'),
-                            ContentType='application/json'
-                        )
-                s3_client.put_object(
-                            Bucket=bucket_name,
-                            Key=f'documentos/{document["Hash"]}.sig',
-                            Body=base64.b64encode(sign).decode('utf-8'),
-                            ContentType='application/octet-stream'
-                        )
-                return Response({"success":"Succeeded", "hash": sha_256_hex}, status=status.HTTP_201_CREATED)
+                enviar_s3.delay(file_json,hash_bytes.hex(),base64.b64encode(signature).decode())
+                return Response({"success":"Succeeded", "hash": hash_bytes.hex()}, status=status.HTTP_201_CREATED)
             except Exception:
                 return Response({"error":"Failed to upload to S3"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:

@@ -28,7 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = secrets["SECRET_KEY"]
-
+AWS_BUCKET_NAME=secrets["AWS_STORAGE_BUCKET_NAME"]
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
@@ -163,3 +163,12 @@ SESSION_SAVE_EVERY_REQUEST = True
 SESSION_COOKIE_SECURE =True
 SESSION_COOKIE_HTTPONLY =True
 CSFR_COOKIE_SECURE=True
+# Broker URL
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+
+# URL para guardar el resultado de las tareas
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+
+# Formato de datos aceptable
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
