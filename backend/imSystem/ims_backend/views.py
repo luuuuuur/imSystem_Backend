@@ -56,7 +56,7 @@ from .models import DetalleInsumoAtencion
 # ─── LOCAL / AWS ─────────────────────────────────────────────────────────────
 from .utils              import(get_s3_download_url, generate_totp, generate_password)
 from botocore.exceptions import ClientError
-from task                   import enviar_s3
+from .tasks.task_s3 import enviar_s3
 from .totp_auth.authentication import authentication
 import rustjson
 # =============================================================================
