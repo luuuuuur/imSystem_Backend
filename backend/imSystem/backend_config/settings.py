@@ -28,7 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = secrets["SECRET_KEY"]
-AWS_BUCKET_NAME=secrets["AWS_STORAGE_BUCKET_NAME"]
+AWS_BUCKET_NAME=secrets["AWS_BUCKET_NAME"]
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
