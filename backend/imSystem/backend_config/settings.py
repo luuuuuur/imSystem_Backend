@@ -7,10 +7,6 @@ class Secrets:
     def generate_secrets(cls):
         response = cls.client.get_secret_value(SecretId='TEST_AWS_SECRETS_MANAGER')
         return json.loads(response['SecretString'])
-    @classmethod
-    def secret_key(cls):
-        response = cls.client.get_secret_value(SecretId='ims/private_key')
-        return json.loads(response['SecretString'])
 secrets = Secrets.generate_secrets()
 #-----END AWS MANAGER SECTION---------
 
