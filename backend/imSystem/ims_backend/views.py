@@ -335,6 +335,9 @@ class RegistroAtencionAPI(APIView):
                     document["Firma"]= base64.b64encode(signature).decode()
                     s3_key_json = f"documentos/{document["Hash"]}.json"
                     s3_key_sig  = f"documentos/{document["Hash"]}.sig"
+                    atencion.sello_electronico = f"{hash_bytes.hex()}:{base64.b64encode(signature).decode()}"
+                    atencion.estado_sello = "Firmado"
+                    atencion.save(update_fields=["sello_electronico", "estado_sello"])
                     Documento.objects.create(archivo_s3_key=s3_key_json,
                                              firma_s3_key=s3_key_sig,
                                              archivo_hash=hash_bytes.hex(),
