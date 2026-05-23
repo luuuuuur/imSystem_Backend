@@ -145,5 +145,5 @@ class AuthenticationSerializer(serializers.Serializer):
     password = serializers.CharField()
     totp_code = serializers.CharField()
 class InsumoIdSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
+    insumo_id = serializers.IntegerField()
     ambulancia_id = serializers.IntegerField()
