@@ -125,7 +125,7 @@ class InsumosAPI(APIView):
         return [ControlProfileOnly()]
     def get(self, request):
         r = inventario.evaluate(request)
-        return Response({r},status=status.HTTP_200_OK)
+        return Response(r,status=status.HTTP_200_OK)
 # API para OBTENER las ambulancias
 class AmbulanciaAPI(APIView):
     def get_permissions(self):
