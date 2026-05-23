@@ -43,6 +43,7 @@ from .models import Atencion
 from ims_backend.toolbox.Atenciones.add_atencion import add_atencion
 from ims_backend.toolbox.Despachos.all_despachos import all_despachos
 from ims_backend.toolbox.Despachos.solicitud_usuario import solicitud_usuario
+from ims_backend.toolbox.Inventario import (get_query, inventario)
 from .utils              import(get_s3_download_url, generate_totp, generate_password)
 from botocore.exceptions import ClientError
 from .totp_auth.authentication import authentication
@@ -116,6 +117,15 @@ class Inventory(APIView):
     permission_classes  = [ControlProfileOnly]
 
 
+#API para obtener los insumos
+class InsumosAPI(APIView):
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [MFAVerified()]
+        return [ControlProfileOnly()]
+    def get(self, request):
+        r = inventario.evaluate(request)
+        return Response({r},status=status.HTTP_200_OK)
 # API para OBTENER las ambulancias
 class AmbulanciaAPI(APIView):
     def get_permissions(self):
