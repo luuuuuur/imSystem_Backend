@@ -202,7 +202,7 @@ class DetalleInsumoAtencion(models.Model):
     atencion = models.ForeignKey(Atencion, on_delete=models.CASCADE)
     insumo = models.ForeignKey(PresentacionInsumo, on_delete=models.PROTECT, related_name="insumos_utilizados")
     observaciones = models.CharField(max_length=250, blank=True)
-    cantidad_usada = models.DecimalField(max_digits=10, decimal_places=2)
+    cantidad_usada = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     def __str__(self):
         return f"{self.insumo.insumo.nombre_insumo} en Atencion {self.atencion.id}"
