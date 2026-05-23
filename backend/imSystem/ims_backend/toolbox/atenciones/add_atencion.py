@@ -1,5 +1,5 @@
 from django.db import transaction
-import exceptions
+from ims_backend.toolbox import exceptions
 from ims_backend.serializers import PayloadSerializer
 from ims_backend.models import *
 from django.shortcuts import get_object_or_404
