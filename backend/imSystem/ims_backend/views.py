@@ -2,7 +2,7 @@
 from rest_framework.views       import APIView
 from rest_framework             import status
 from rest_framework.response    import Response
-from rest_framework.permissions import BasePermission, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
 
 # ─── DJANGO ──────────────────────────────────────────────────────────────────
@@ -13,14 +13,7 @@ from django.db                      import transaction
 from django.forms.models            import model_to_dict
 from django.utils.decorators        import method_decorator
 from django.views.decorators.csrf   import ensure_csrf_cookie
-from django.conf                    import settings
-from django.db.models               import F
 
-# ─── STDLIB ──────────────────────────────────────────────────────────────────
-import json
-import decimal
-import datetime
-import base64
 
 # ─── SERIALIZERS ─────────────────────────────────────────────────────────────
 from .serializers import PersonalSerializer
@@ -46,54 +39,22 @@ from .models import Despacho
 from .models import Ambulancia
 from .models import DespachoPersonal
 from .models import Atencion
-from .models import SignosVitales
-from .models import PreInforme
-from .models import Cronologia
-from .models import InsumoMedico
-from .models import Documento
-from .models import DetalleInsumoAtencion
-
 # ─── LOCAL / AWS ─────────────────────────────────────────────────────────────
+from ims_backend.toolbox.atenciones.add_atencion import add_atencion
+from ims_backend.toolbox.despachos.all_despachos import all_despachos
+from ims_backend.toolbox.despachos.solicitud_usuario import solicitud_usuario
 from .utils              import(get_s3_download_url, generate_totp, generate_password)
 from botocore.exceptions import ClientError
-from .tasks.task_s3 import enviar_s3
 from .totp_auth.authentication import authentication
-import rustjson
 # =============================================================================
 # PERMISOS PERSONALIZADOS
 # =============================================================================
 
 # Permiso custom: restringe acceso a usuarios con rol control
 # Usar en vistas donde solo personal de control debe operar (como por ejemplo asignar trabajores, despachos etc)
-class ControlProfileOnly(BasePermission):
-    def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and request.user.rol and request.user.rol.nombre_rol == 'control')
-
-
-class MedicProfileOnly(BasePermission):
-    def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and request.user.rol and request.user.rol.nombre_rol == 'medic')
-
-
-class NurseProfileOnly(BasePermission):
-    def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and request.user.rol and request.user.rol.nombre_rol == 'nurse')
-
-
-class DriverProfileOnly(BasePermission):
-    def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and request.user.rol and request.user.rol.nombre_rol == 'driver')
-
-
-class WorkerProfileOnly(BasePermission):
-    def has_permission(self, request,view):
-        return bool(request.user.is_authenticated and request.user.rol and request.user.rol.nombre_rol in ['medic', 'nurse', 'driver'])
-
-class MFAVerified(BasePermission):
-    def has_permission(self, request, view):
-        return bool(
-            request.user.is_authenticated and request.session.get("mfa_verified", False)
-        )
+from auth.permissions import (ControlProfileOnly,
+                              NurseProfileOnly, DriverProfileOnly,
+                              MedicProfileOnly,MFAVerified)
 
 # =============================================================================
 # UTILIDADES
@@ -103,16 +64,6 @@ class EnsureCsrfMixin:
     @method_decorator(ensure_csrf_cookie)
     def dispatch(self, *args, **kwargs):
         return super().dispatch(*args, **kwargs)
-
-
-class CustomEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, decimal.Decimal):
-            return float(obj)
-        if isinstance(obj, (datetime.datetime, datetime.date)):
-            return obj.isoformat()
-        return super().default(obj)
-
 
 # =============================================================================
 # VISTAS
@@ -244,119 +195,11 @@ class DataPersonal(APIView):
 
 # API para REGISTRAR las atenciones post-despacho y subir los documentos firmados al S3
 class RegistroAtencionAPI(APIView):
-    permission_classes = [WorkerProfileOnly]
+    permission_classes = [NurseProfileOnly | MedicProfileOnly]
 
     def post(self,request):
-        serializer = PayloadSerializer(data= request.data)
-        if serializer.is_valid():
-            valid_data = serializer.validated_data
-            svd = valid_data['signos_vitales']
-            preinforme_data = valid_data['preinforme']
-            cronologia_data = valid_data['cronologia']
-            insumos_data = valid_data['insumos_utilizados']
-            despacho_data = valid_data['despacho']
-            despacho = get_object_or_404(Despacho, id=despacho_data['despacho_id'])
-            ambulancia = get_object_or_404(Ambulancia, id=despacho_data['ambulancia_id'])
-            if despacho.estado != "asignado":
-                return Response({'error':'cannot edit'}, status=status.HTTP_400_BAD_REQUEST)
-            if Atencion.objects.filter(despacho=despacho).exists():
-                return Response({'error':'cannot edit same data twice'}, status=status.HTTP_409_CONFLICT)
-            try:
-                with transaction.atomic():
-                    
-                    atencion = Atencion.objects.create(ambulancia=ambulancia, despacho=despacho,
-                                            hora_salida=despacho_data['hora_salida'],
-                                            hora_llegada=despacho_data['hora_llegada'])
-                    SignosVitales.objects.bulk_create([SignosVitales(atencion=atencion, **sv) for sv in svd])
-                    pre=PreInforme.objects.create(atencion=atencion, pre_informe=preinforme_data['pre_informe'],
-                                                           motivo_llamado=preinforme_data['motivo_llamado'],
-                                                           estado_paciente=preinforme_data['estado_paciente'])
-                    crono =Cronologia.objects.create(atencion=atencion, hora_llamada=cronologia_data['hora_llamada'],
-                                                                despacho_movil = cronologia_data['despacho_movil'],
-                                                                llegada_qth1=cronologia_data['llegada_qth1'],
-                                                                salida_qth1=cronologia_data['salida_qth1'],
-                                                                llegada_qth2=cronologia_data['llegada_qth2'],
-                                                                salida_qth2=cronologia_data['salida_qth2'],
-                                                                categoria=cronologia_data['categoria'])
-                    ids_insumos = [item['insumo_id'] for item in insumos_data]
-                    insumos_locked = {i.id: i for i in InsumoMedico.objects.select_for_update().filter(id__in=ids_insumos)}
-                    
-                    for insumo_data in insumos_data:
-                        insumo = insumos_locked[insumo_data['insumo_id']]
-                        if insumo.stock_total < insumo_data['dosis']:
-                            raise ValueError(f"Stock insuficiente para {insumo.nombre_insumo}")
-                    for insumo_data in insumos_data:
-                        InsumoMedico.objects.filter(id=insumo_data['insumo_id']).update(
-                            stock_total=F('stock_total') - insumo_data['dosis']
-                        )
-                        DetalleInsumoAtencion.objects.create(
-                            atencion=atencion,
-                            insumo_id=insumo_data['insumo_id'],
-                            dosis=insumo_data['dosis'],
-                            observaciones=insumo_data['observaciones']
-                        )
-                    document = {
-                        "atencion": model_to_dict(atencion),
-                        "paciente":{
-                            "nombre_completo":despacho.paciente.nombre_completo,
-                            "rut":despacho.paciente.rut
-                        },
-                        "registrado_por":{
-                            "nombre_completo":request.user.full_name,
-                            "rut":request.user.rut,
-                            "rol":request.user.rol.nombre_rol
-                        },
-                        "signos_vitales":list(SignosVitales.objects.filter(atencion=atencion)
-                                                                    .values(
-                                                                        'id',
-                                                                        'atencion_id',
-                                                                        'timestamp',
-                                                                        'presion_sistolica',
-                                                                        'presion_diastolica',
-                                                                        'frecuencia_cardiaca',
-                                                                        'saturacion_oxigeno',
-                                                                        'temperatura',
-                                                                        'fr',
-                                                                        'fio2',
-                                                                        'hgt',
-                                                                        'gcs',
-                                                                        'eva',
-                                                                        'hora',
-                                                                        'observaciones'
-                                                                    )),
-                        "preinforme":model_to_dict(pre),
-                        "cronologia":model_to_dict(crono),
-                        "insumos_utilizados":list(DetalleInsumoAtencion.objects.filter(atencion=atencion)
-                                                   .values('insumo__nombre_insumo','dosis','observaciones')),
-                    }
-                    prepared_data = json.dumps(document, sort_keys=True, ensure_ascii=False, cls=CustomEncoder).encode('utf-8')
-                    hash_bytes,signature = rustjson.data(prepared_data)
-                    document["Hash"]= hash_bytes.hex()
-                    document["Firma"]= base64.b64encode(signature).decode()
-                    s3_key_json = f"documentos/{document["Hash"]}.json"
-                    s3_key_sig  = f"documentos/{document["Hash"]}.sig"
-                    atencion.sello_electronico = f"{hash_bytes.hex()}:{base64.b64encode(signature).decode()}"
-                    atencion.estado_sello = "Firmado"
-                    atencion.save(update_fields=["sello_electronico", "estado_sello"])
-                    Documento.objects.create(archivo_s3_key=s3_key_json,
-                                             firma_s3_key=s3_key_sig,
-                                             archivo_hash=hash_bytes.hex(),
-                                             atencion=atencion)
-                    despacho.estado = "finalizado"
-                    despacho.save(update_fields=["estado"])
-            except ValueError as ve:
-                return Response({"error":str(ve)}, status=status.HTTP_400_BAD_REQUEST)
-            except Exception as e:
-                return Response({"error":str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            try:
-                file_json = json.dumps(document, ensure_ascii=False, cls=CustomEncoder)
-                enviar_s3.delay(file_json,hash_bytes.hex(),base64.b64encode(signature).decode())
-                return Response({"success":"Succeeded", "hash": hash_bytes.hex()}, status=status.HTTP_201_CREATED)
-            except Exception:
-                return Response({"error":"Failed to upload to S3"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        else:
-            return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
-
+        result = add_atencion(request)
+        return Response(result, status=status.HTTP_201_CREATED)
 
 # API para creacion de GRUPOS de trabajo
 class Grupos(APIView):
@@ -532,12 +375,9 @@ class RegistrosPacientesAPI(APIView):
 # ─── TODO ─────────────────────────────────────────────────────────────────────
 #TODO: Creación de la API para los estados de los usuarios (en turno, disponible, fuera de servicio)
 #TODO: Creación de la API para la gestión de los datos de los pacientes(para cargar al documento)
-
-
 # API para CREAR los despachos
 class CreateDespacho(APIView):
     permission_classes = [ControlProfileOnly]
-
     def post(self, request):
         serializer = CreateDespachoSerializer(data=request.data)
         if serializer.is_valid():
@@ -609,83 +449,8 @@ class AsignarDespacho(APIView):
 class AllDespachos(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):
-        if request.query_params:
-            serializer = ObtenerDespachoSerializer(data=request.query_params)
-            if serializer.is_valid():
-                valid_data = serializer.validated_data
-                despacho = Despacho.objects.filter(
-                    id=valid_data['despacho_id'],
-                ).select_related('ambulancia','atencion','asignado_por','creado_por','paciente').exclude(estado__in=['finalizado', 'cancelado']).first()
-
-                if not despacho:
-                    return Response({'error': 'Despacho no encontrado'}, status=status.HTTP_404_NOT_FOUND)
-
-                despacho_personal = DespachoPersonal.objects.filter(despacho=despacho).first()
-                personal = []
-                if despacho_personal:
-                    personal = list(SuscritosAGrupo.objects.filter(
-                        grupo=despacho_personal.grupo,
-                        fecha_salida=None
-                    ).values(
-                        'personal__id', 'personal__first_name',
-                        'personal__last_name', 'personal__rut',
-                        'personal__rol__nombre_rol'
-                    ))
-                resultado = {
-                    'id': despacho.id,
-                    'estado': despacho.estado,
-                    'direccion_origen': despacho.direccion_origen,
-                    'direccion_destino': despacho.direccion_destino,
-                    'descripcion_llamado': despacho.descripcion_llamado,
-                    'fecha_llamado': despacho.fecha_llamado,
-                    'fecha_asignacion': despacho.fecha_asignacion,
-                    'ambulancia_id': despacho.ambulancia_id,
-                    'creado_por_id': despacho.creado_por_id,
-                    'asignado_por_id': despacho.asignado_por_id,
-                    'paciente':{
-                        'nombre_completo': despacho.paciente.nombre_completo,
-                        'rut':despacho.paciente.rut
-                    } if despacho.paciente else None,
-                    'personal': personal
-                }
-                return Response(resultado, status=status.HTTP_200_OK)
-            else:
-                return Response(serializer.errors, status=status.HTTP_404_NOT_FOUND)
-        else:
-            despachos = Despacho.objects.exclude(
-                    estado__in=['finalizado', 'cancelado']
-                ).select_related('ambulancia', 'creado_por', 'asignado_por','atencion','paciente')
-            resultado = []
-            for d in despachos:
-                dp = DespachoPersonal.objects.filter(despacho=d).first()
-                personal = []
-                if dp:
-                    personal = list(SuscritosAGrupo.objects.filter(
-                        grupo=dp.grupo,
-                        fecha_salida=None
-                    ).values(
-                        'personal__id', 'personal__first_name',
-                        'personal__last_name', 'personal__rut',
-                        'personal__rol__nombre_rol'
-                    ))
-                
-                resultado.append({
-                    'id': d.id,
-                    'estado': d.estado,
-                    'direccion_origen': d.direccion_origen,
-                    'direccion_destino': d.direccion_destino,
-                    'descripcion_llamado': d.descripcion_llamado,
-                    'fecha_llamado': d.fecha_llamado,
-                    'fecha_asignacion': d.fecha_asignacion,
-                    'ambulancia_id': d.ambulancia_id,
-                    'paciente':{
-                        'nombre_completo':d.paciente.nombre_completo,
-                        'rut':d.paciente.rut
-                    } if d.paciente else None,
-                    'personal': personal
-                })
-
-            return Response(resultado, status=status.HTTP_200_OK)
+        r = all_despachos(request)
+        return Response(r, status=status.HTTP_200_OK)
 
 
 # ─── TODO ─────────────────────────────────────────────────────────────────────
@@ -702,67 +467,9 @@ class DespachoASolicitudUsuario(APIView):
         return[ControlProfileOnly()]
 
     def get(self, request):
-        try:
-            # buscar el grupo activo del usuario
-            suscripcion = SuscritosAGrupo.objects.filter(
-                personal=request.user,
-                fecha_salida=None
-            ).first()
-
-            if not suscripcion:
-                return Response([], status=status.HTTP_200_OK)
-
-            # buscar despachos asignados a ese grupo
-            despachos = DespachoPersonal.objects.filter(
-                grupo=suscripcion.grupo
-            ).select_related(
-                'despacho',
-                'despacho__ambulancia',
-                'despacho__creado_por',
-                'despacho__atencion',
-            ).exclude(
-                despacho__estado__in=['finalizado', 'cancelado']
-            )
-            personal = SuscritosAGrupo.objects.filter(
-                    grupo=suscripcion.grupo,
-                    fecha_salida=None
-                ).values(
-                    'personal__id',
-                    'personal__first_name',
-                    'personal__last_name',
-                    'personal__rut',
-                    'personal__rol__nombre_rol',
-            )
-            
-            resultado = []
-            for dp in despachos:
-                d = dp.despacho
-                # obtener personal del grupo
-                resultado.append({
-                    'id': str(d.id),
-                    'estado': d.estado,
-                    'direccionOrigen': d.direccion_origen,
-                    'direccionDestino': d.direccion_destino,
-                    'descripcionLlamado': d.descripcion_llamado,
-                    'fechaLlamado': d.fecha_llamado,
-                    'paciente':{
-                        'nombre_completo':d.paciente.nombre_completo,
-                        'rut':d.paciente.rut
-                    } if d.paciente else None,
-                    'ambulancia': {
-                        'id': str(d.ambulancia.id),
-                        'patente': d.ambulancia.patente,
-                        'modelo': d.ambulancia.modelo,
-                        'estado': d.ambulancia.estado_disponibilidad,
-                    } if d.ambulancia else None,
-                    'personalIds': [str(p['personal__id']) for p in personal],
-                    'personal': list(personal),
-                })
-
-            return Response(resultado, status=status.HTTP_200_OK)
-        except Exception:
-            return Response({'error': 'failed to get the data'},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        r = solicitud_usuario(request)
+        return Response({r}, status=status.HTTP_200_OK)
+       
 
 
 # API para retornar las atenciones, recibe parámetros a través de URL
