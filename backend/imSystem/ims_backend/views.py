@@ -331,10 +331,8 @@ class RegistroAtencionAPI(APIView):
                     }
                     prepared_data = json.dumps(document, sort_keys=True, ensure_ascii=False, cls=CustomEncoder).encode('utf-8')
                     hash_bytes,signature = rustjson.data(prepared_data)
-                    document["Hash"]= hash_bytes.hex()
-                    document["Firma"]= base64.b64encode(signature).decode()
-                    s3_key_json = f"documentos/{document["Hash"]}.json"
-                    s3_key_sig  = f"documentos/{document["Hash"]}.sig"
+                    s3_key_json = f"documentos/{hash_bytes.hex()}.json"
+                    s3_key_sig  = f"documentos/{base64.b64encode(signature).decode()}.sig"
                     atencion.sello_electronico = f"{hash_bytes.hex()}:{base64.b64encode(signature).decode()}"
                     atencion.estado_sello = "Firmado"
                     atencion.save(update_fields=["sello_electronico", "estado_sello"])
@@ -793,6 +791,7 @@ class RetornarAtencionAPI(APIView):
                     'hora_salida':a.hora_salida,
                     'hora_llegada':a.hora_llegada,
                     'estado_sello':a.estado_sello,
+                    'firma_digital': a.sello_electronico,
                     'despacho':{
                         'despacho_id':a.despacho.id,
                         'paciente':{
