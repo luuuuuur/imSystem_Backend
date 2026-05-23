@@ -12,13 +12,14 @@ def evaluate(request):
         else:
             raise exceptions.BadRequestException
     else:
-        data = InsumoMedico.objects.values("id","nombre_insumo","categoria")
+        data = InsumoMedico.objects.values("id","nombre_insumo","categoria", "categoria__categoria")
         r = []
         for insumo in data: 
             r.append({"insumo":
                 {
                 "id":insumo["id"],
                 "nombre":insumo["nombre_insumo"],
-                "categoria":insumo["categoria"]}
+                "categoria":insumo["categoria__categoria"]},
+                "categoria_id":insumo["categoria"]
                 })
         return r

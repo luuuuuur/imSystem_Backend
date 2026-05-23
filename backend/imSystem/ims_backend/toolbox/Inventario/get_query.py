@@ -13,7 +13,8 @@ def get_query(valid_data: InsumoIdSerializer):
             "insumo":{
                 "id":insumo.id,
                 "nombre": insumo.nombre_insumo,
-                "categoria": insumo.categoria
+                "categoria": insumo.categoria.categoria,
+                "categoria_id": insumo.categoria
             }
         }
         return r
