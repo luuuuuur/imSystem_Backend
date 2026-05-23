@@ -793,6 +793,7 @@ class RetornarAtencionAPI(APIView):
                     'hora_salida':a.hora_salida,
                     'hora_llegada':a.hora_llegada,
                     'estado_sello':a.estado_sello,
+                    'firma_digital': a.sello_electronico,
                     'despacho':{
                         'despacho_id':a.despacho.id,
                         'paciente':{
