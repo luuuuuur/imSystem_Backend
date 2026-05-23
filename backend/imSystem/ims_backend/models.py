@@ -9,7 +9,7 @@ class RolPersonal(models.Model):
         return self.nombre_rol
 
 class CategoriaInsumo(models.Model):
-    categoria = models.CharField(max_length=100, default="Categoria_Placeholder",null=False, blank=False)
+    categoria = models.CharField(max_length=100,null=True, blank=True)
     def __str__(self):
         return self.categoria
     
