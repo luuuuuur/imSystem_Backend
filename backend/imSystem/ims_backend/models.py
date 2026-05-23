@@ -85,7 +85,7 @@ class Ambulancia(models.Model):
 
 class InsumoMedico(models.Model):
     nombre_insumo = models.CharField(max_length=100)
-    categoria = models.ForeignKey(CategoriaInsumo, on_delete=models.PROTECT, related_name="insumo_categoria", default="placeholder")
+    categoria = models.ForeignKey(CategoriaInsumo, on_delete=models.PROTECT, related_name="insumo_categoria", default=1)
 
     def __str__(self):
         return self.nombre_insumo
