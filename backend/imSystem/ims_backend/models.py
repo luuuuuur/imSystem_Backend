@@ -8,7 +8,11 @@ class RolPersonal(models.Model):
     def __str__(self):
         return self.nombre_rol
 
-
+class CategoriaInsumo(models.Model):
+    categoria = models.CharField(max_length=100, default="Categoria_Placeholder",null=False, blank=False)
+    def __str__(self):
+        return self.categoria
+    
 class GrupoPersonal(models.Model):
     nombre_grupo = models.CharField(max_length=100)
 
@@ -79,16 +83,15 @@ class Ambulancia(models.Model):
     def __str__(self):
         return f"{self.modelo} - {self.patente}"
 
-
 class InsumoMedico(models.Model):
     nombre_insumo = models.CharField(max_length=100)
-    stock_total = models.IntegerField()
-    stock_minimo = models.IntegerField(default=0)
-    unidad_medida = models.CharField(max_length=20)  # mg, ml, unidades
-    tipo = models.CharField(max_length=50)
+    categoria = models.ForeignKey(CategoriaInsumo, on_delete=models.PROTECT, related_name="insumo_categoria")
 
     def __str__(self):
         return self.nombre_insumo
+
+class UnidadMedidaInsumo(models.Model):
+    unit = models.CharField(max_length=20)
 
 
 class Despacho(models.Model):
@@ -189,15 +192,20 @@ class SignosVitales(models.Model):
         return f"Signos Atencion {self.atencion.id} - {self.timestamp}"
 
 
-class DetalleInsumoAtencion(models.Model):
-    atencion = models.ForeignKey(Atencion, on_delete=models.CASCADE, related_name='insumos_utilizados')
-    insumo = models.ForeignKey(InsumoMedico, on_delete=models.PROTECT)
-    dosis = models.DecimalField(max_digits=10, decimal_places=1)
-    observaciones = models.CharField(max_length=250, blank=True)
+class PresentacionInsumo(models.Model):
+    insumo = models.ForeignKey(InsumoMedico, on_delete=models.PROTECT, related_name="presentacion_insumo")
+    cantidad = models.DecimalField(max_digits=10, decimal_places=2)
+    unidad_medida = models.ForeignKey(UnidadMedidaInsumo, on_delete=models.PROTECT, related_name="presentacion_um")
+    stock = models.IntegerField()
 
+class DetalleInsumoAtencion(models.Model):
+    atencion = models.ForeignKey(Atencion, on_delete=models.CASCADE)
+    insumo = models.ForeignKey(PresentacionInsumo, on_delete=models.PROTECT, related_name="insumos_utilizados")
+    observaciones = models.CharField(max_length=250, blank=True)
+    cantidad_usada = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
-        return f"{self.insumo.nombre_insumo} en Atencion {self.atencion.id}"
+        return f"{self.insumo.insumo.nombre_insumo} en Atencion {self.atencion.id}"
 
 
 class Documento(models.Model):

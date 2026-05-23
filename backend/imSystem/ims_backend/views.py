@@ -40,9 +40,9 @@ from .models import Ambulancia
 from .models import DespachoPersonal
 from .models import Atencion
 # ─── LOCAL / AWS ─────────────────────────────────────────────────────────────
-from ims_backend.toolbox.atenciones.add_atencion import add_atencion
-from ims_backend.toolbox.despachos.all_despachos import all_despachos
-from ims_backend.toolbox.despachos.solicitud_usuario import solicitud_usuario
+from ims_backend.toolbox.Atenciones.add_atencion import add_atencion
+from ims_backend.toolbox.Despachos.all_despachos import all_despachos
+from ims_backend.toolbox.Despachos.solicitud_usuario import solicitud_usuario
 from .utils              import(get_s3_download_url, generate_totp, generate_password)
 from botocore.exceptions import ClientError
 from .totp_auth.authentication import authentication
