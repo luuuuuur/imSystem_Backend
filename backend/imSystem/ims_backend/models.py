@@ -92,7 +92,7 @@ class InsumoMedico(models.Model):
 
 class UnidadMedidaInsumo(models.Model):
     unit = models.CharField(max_length=20)
-
+    
 
 class Despacho(models.Model):
     ESTADOS = [
@@ -196,7 +196,6 @@ class PresentacionInsumo(models.Model):
     insumo = models.ForeignKey(InsumoMedico, on_delete=models.PROTECT, related_name="presentacion_insumo")
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     unidad_medida = models.ForeignKey(UnidadMedidaInsumo, on_delete=models.PROTECT, related_name="presentacion_um")
-    stock = models.IntegerField()
 
 class DetalleInsumoAtencion(models.Model):
     atencion = models.ForeignKey(Atencion, on_delete=models.CASCADE)
@@ -207,6 +206,13 @@ class DetalleInsumoAtencion(models.Model):
     def __str__(self):
         return f"{self.insumo.insumo.nombre_insumo} en Atencion {self.atencion.id}"
 
+class StockInsumo(models.Model):
+    presentacion = models.ForeignKey(PresentacionInsumo, on_delete=models.PROTECT, related_name="stocks_presentacion")
+    ambulancia = models.ForeignKey(Ambulancia, on_delete=models.PROTECT, related_name="stocks_ambulancia")
+    stock = models.IntegerField(default=0)
+
+    class Meta:
+        unique_together = ['presentacion', 'ambulancia']
 
 class Documento(models.Model):
     archivo_s3_key = models.CharField(max_length=500, help_text="Ruta del archivo")

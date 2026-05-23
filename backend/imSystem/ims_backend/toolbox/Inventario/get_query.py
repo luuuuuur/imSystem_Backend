@@ -7,14 +7,22 @@ from ims_backend.serializers import InsumoIdSerializer
 from ims_backend.toolbox import exceptions
 def get_query(valid_data: InsumoIdSerializer):
     try:
-        insumo = get_object_or_404(InsumoMedico, id=valid_data["id"])
+        stock = get_object_or_404(StockInsumo.objects.select_related("presentacion__insumo__categoria", "ambulancia",
+                                                                     "presentacion__unidad_medida"),
+                ambulancia_id=valid_data["ambulancia_id"],
+                presentacion__insumo_id=valid_data["insumo_id"])
 
         r = {
             "insumo":{
-                "id":insumo.id,
-                "nombre": insumo.nombre_insumo,
-                "categoria": insumo.categoria.categoria,
-                "categoria_id": insumo.categoria
+                "id":stock.presentacion.insumo.id,
+                "nombre": stock.presentacion.insumo.nombre_insumo,
+                "categoria": stock.presentacion.insumo.categoria.categoria,
+                "categoria_id": stock.presentacion.insumo.categoria.id,
+                "unidad_medida":stock.presentacion.unidad_medida.unit,
+                "ambulancia":{
+                    "patente":stock.ambulancia.patente,
+                    "stock":stock.stock,
+                }
             }
         }
         return r

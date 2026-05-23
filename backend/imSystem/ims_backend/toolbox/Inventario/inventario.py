@@ -12,14 +12,21 @@ def evaluate(request):
         else:
             raise exceptions.BadRequestException
     else:
-        data = InsumoMedico.objects.values("id","nombre_insumo","categoria", "categoria__categoria")
+        presentacion = StockInsumo.objects.select_related('presentacion__insumo__categoria', 'presentacion__unidad_medida', 'ambulancia').all()
         r = []
-        for insumo in data: 
-            r.append({"insumo":
-                {
-                "id":insumo["id"],
-                "nombre":insumo["nombre_insumo"],
-                "categoria":insumo["categoria__categoria"],
-                "categoria_id":insumo["categoria"]},
-                })
+        for data in presentacion:
+            r.append({
+                "id":data.id,
+                "insumo":{
+                    "insumo_id":data.presentacion.insumo.id,
+                    "nombre":data.presentacion.insumo.nombre_insumo,
+                    "categoria":data.presentacion.insumo.categoria.categoria,
+                    "categoria_id":data.presentacion.insumo.categoria.id,
+                    "unidad_medida":data.presentacion.unidad_medida.unit,
+                },
+                "ambulancia":{
+                    "patente":data.ambulancia.patente,
+                    "stock":data.stock
+                }
+            })
         return r

@@ -117,7 +117,7 @@ class Inventory(APIView):
     permission_classes  = [ControlProfileOnly]
 
 
-#API para obtener los insumos
+#API para obtener TODOS los insumos
 class InsumosAPI(APIView):
     def get_permissions(self):
         if self.request.method == 'GET':
@@ -126,6 +126,7 @@ class InsumosAPI(APIView):
     def get(self, request):
         r = inventario.evaluate(request)
         return Response(r,status=status.HTTP_200_OK)
+    
 # API para OBTENER las ambulancias
 class AmbulanciaAPI(APIView):
     def get_permissions(self):
