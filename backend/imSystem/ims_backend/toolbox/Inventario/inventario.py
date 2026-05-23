@@ -19,7 +19,7 @@ def evaluate(request):
                 {
                 "id":insumo["id"],
                 "nombre":insumo["nombre_insumo"],
-                "categoria":insumo["categoria__categoria"]},
-                "categoria_id":insumo["categoria"]
+                "categoria":insumo["categoria__categoria"],
+                "categoria_id":insumo["categoria"]},
                 })
         return r
