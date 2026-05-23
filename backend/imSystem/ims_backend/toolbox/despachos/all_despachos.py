@@ -1,6 +1,6 @@
 from ims_backend.models import *
 from ims_backend.serializers import *
-from toolbox import exceptions
+from ims_backend.toolbox import exceptions
 
 def all_despachos(request):
         if request.query_params:

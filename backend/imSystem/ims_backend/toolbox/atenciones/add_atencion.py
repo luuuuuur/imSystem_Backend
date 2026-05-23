@@ -8,7 +8,7 @@ from ims_backend.tasks.task_s3 import enviar_s3
 import json
 import base64
 import rustjson
-from customencoder import CustomEncoder
+from ims_backend.toolbox.customencoder import CustomEncoder
 from django.db.models   import F
 import rustjson
 def add_atencion(request):

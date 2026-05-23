@@ -1,5 +1,5 @@
 from ims_backend.models import SuscritosAGrupo,DespachoPersonal
-from toolbox.exceptions import NotFoundException, InternalServerException
+from ims_backend.toolbox.exceptions import NotFoundException, InternalServerException
 def solicitud_usuario(request):
         try:
             # buscar el grupo activo del usuario
