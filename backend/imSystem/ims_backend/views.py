@@ -52,7 +52,7 @@ from .totp_auth.authentication import authentication
 
 # Permiso custom: restringe acceso a usuarios con rol control
 # Usar en vistas donde solo personal de control debe operar (como por ejemplo asignar trabajores, despachos etc)
-from auth.permissions import (ControlProfileOnly,
+from ims_backend.auth.permissions import (ControlProfileOnly,
                               NurseProfileOnly, DriverProfileOnly,
                               MedicProfileOnly,MFAVerified)
 
