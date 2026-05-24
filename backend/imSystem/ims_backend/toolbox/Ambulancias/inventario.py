@@ -37,20 +37,20 @@ def all():
             'presentacion__unidad_medida'
         ).all()
         r =[]
-
         for data in stocks:
-            r.append({
-                "ambulancia":{
-                    "id":data.ambulancia.id,
-                    "patente":data.ambulancia.patente,
-                    "estado":data.ambulancia.estado_disponibilidad,
-                    "stock":[{
-                        "insumo_nombre":data.presentacion.insumo.nombre_insumo,
-                        "categoria":data.presentacion.insumo.categoria.categoria,
-                        "unidad_medida":data.presentacion.unidad_medida.unit,
-                        "stock":data.stock
-                    }]
+            amb_id = data.ambulancia.id
+            if amb_id not in r:
+                r[amb_id] = {
+                    "id": data.ambulancia.id,
+                    "patente": data.ambulancia.patente,
+                    "estado": data.ambulancia.estado_disponibilidad,
+                    "stock": []
                 }
+            r[amb_id]["stock"].append({
+                "insumo_nombre": data.presentacion.insumo.nombre_insumo,
+                "categoria": data.presentacion.insumo.categoria.categoria,
+                "unidad_medida": data.presentacion.unidad_medida.unit,
+                "stock": data.stock
             })
         return r
     except:
