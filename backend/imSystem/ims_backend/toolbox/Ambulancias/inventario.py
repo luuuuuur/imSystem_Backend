@@ -36,7 +36,7 @@ def all():
             'presentacion__insumo__categoria',
             'presentacion__unidad_medida'
         ).all()
-        r =[]
+        r ={}
         for data in stocks:
             amb_id = data.ambulancia.id
             if amb_id not in r:
@@ -47,11 +47,12 @@ def all():
                     "stock": []
                 }
             r[amb_id]["stock"].append({
+                "inusmo_id":data.presentacion.insumo.id,
                 "insumo_nombre": data.presentacion.insumo.nombre_insumo,
                 "categoria": data.presentacion.insumo.categoria.categoria,
                 "unidad_medida": data.presentacion.unidad_medida.unit,
                 "stock": data.stock
             })
-        return r
+        return list(r.values())
     except:
         raise exceptions.InternalServerException
