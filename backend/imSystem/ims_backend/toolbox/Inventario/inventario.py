@@ -8,11 +8,12 @@ def specific(valid_data):
                                                                      "presentacion__unidad_medida"),
                 presentacion__insumo_id=valid_data["insumo_id"])
         r = {
-            "insumo":{
-                "id":stock.presentacion.insumo.id,
+            "presentacion":{
+                "id":stock.presentacion.id,
                 "nombre": stock.presentacion.insumo.nombre_insumo,
                 "categoria": stock.presentacion.insumo.categoria.categoria,
                 "categoria_id": stock.presentacion.insumo.categoria.id,
+                "cantidad": stock.presentacion.cantidad,
                 "unidad_medida":stock.presentacion.unidad_medida.unit,
                 "ambulancia":{
                     "patente":stock.ambulancia.patente,
@@ -32,12 +33,12 @@ def all():
         r = []
         for data in presentacion:
             r.append({
-                "id":data.id,
-                "insumo":{
-                    "insumo_id":data.presentacion.insumo.id,
+                "presentacion":{
+                    "id":data.presentacion.id,
                     "nombre":data.presentacion.insumo.nombre_insumo,
                     "categoria":data.presentacion.insumo.categoria.categoria,
                     "categoria_id":data.presentacion.insumo.categoria.id,
+                    "cantidad":data.presentacion.cantidad,
                     "unidad_medida":data.presentacion.unidad_medida.unit,
                 },
                 "ambulancia":{
