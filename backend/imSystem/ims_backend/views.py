@@ -129,7 +129,8 @@ class InsumosAPI(APIView):
             r = gets.get_perid(request)
             return Response(r,status=status.HTTP_200_OK)
         else:
-            return None
+            r = gets.get_all()
+            return Response(r, status=status.HTTP_200_OK)
 # API para OBTENER las ambulancias
 class AmbulanciaAPI(APIView):
     def get_permissions(self):
