@@ -7,7 +7,7 @@ def specific(valid_data):
             'ambulancia',
             'presentacion__insumo__categoria',
             'presentacion__unidad_medida'
-        ).filter(presentacion__insumo_id=valid_data["insumo_id"])
+        ).filter(ambulancia_id=valid_data["ambulancia_id"])
         r ={}
         for data in stocks:
             amb_id = data.ambulancia.id
