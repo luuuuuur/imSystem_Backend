@@ -125,9 +125,11 @@ class InsumosAPI(APIView):
             return [MFAVerified()]
         return [ControlProfileOnly()]
     def get(self, request):
-        r = gets.get_perid(request)
-        return Response(r,status=status.HTTP_200_OK)
-    
+        if request.query_params:
+            r = gets.get_perid(request)
+            return Response(r,status=status.HTTP_200_OK)
+        else:
+            return None
 # API para OBTENER las ambulancias
 class AmbulanciaAPI(APIView):
     def get_permissions(self):
