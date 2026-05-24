@@ -21,6 +21,7 @@ def specific(valid_data):
             r[amb_id]["stock"].append({
                 "inusmo_id":data.presentacion.insumo.id,
                 "insumo_nombre": data.presentacion.insumo.nombre_insumo,
+                "insumo_cantidad":data.presentacion.cantidad,
                 "categoria": data.presentacion.insumo.categoria.categoria,
                 "unidad_medida": data.presentacion.unidad_medida.unit,
                 "stock": data.stock
@@ -50,6 +51,7 @@ def all():
             r[amb_id]["stock"].append({
                 "inusmo_id":data.presentacion.insumo.id,
                 "insumo_nombre": data.presentacion.insumo.nombre_insumo,
+                "insumo_cantidad":data.presentacion.cantidad,
                 "categoria": data.presentacion.insumo.categoria.categoria,
                 "unidad_medida": data.presentacion.unidad_medida.unit,
                 "stock": data.stock
