@@ -9,7 +9,6 @@ def get_query(valid_data: InsumoIdSerializer):
     try:
         stock = get_object_or_404(StockInsumo.objects.select_related("presentacion__insumo__categoria", "ambulancia",
                                                                      "presentacion__unidad_medida"),
-                ambulancia_id=valid_data["ambulancia_id"],
                 presentacion__insumo_id=valid_data["insumo_id"])
 
         r = {

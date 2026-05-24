@@ -146,4 +146,3 @@ class AuthenticationSerializer(serializers.Serializer):
     totp_code = serializers.CharField()
 class InsumoIdSerializer(serializers.Serializer):
     insumo_id = serializers.IntegerField()
-    ambulancia_id = serializers.IntegerField()
