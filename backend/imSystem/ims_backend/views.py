@@ -43,7 +43,8 @@ from .models import Atencion
 from ims_backend.toolbox.Atenciones.add_atencion import add_atencion
 from ims_backend.toolbox.Despachos.all_despachos import all_despachos
 from ims_backend.toolbox.Despachos.solicitud_usuario import solicitud_usuario
-from ims_backend.toolbox.Inventario import (get_query, inventario)
+from ims_backend.toolbox.Inventario import (gets)
+from ims_backend.toolbox.Ambulancias import (gets)
 from .utils              import(get_s3_download_url, generate_totp, generate_password)
 from botocore.exceptions import ClientError
 from .totp_auth.authentication import authentication
@@ -124,7 +125,7 @@ class InsumosAPI(APIView):
             return [MFAVerified()]
         return [ControlProfileOnly()]
     def get(self, request):
-        r = inventario.evaluate(request)
+        r = gets.get_perid(request)
         return Response(r,status=status.HTTP_200_OK)
     
 # API para OBTENER las ambulancias
@@ -135,9 +136,12 @@ class AmbulanciaAPI(APIView):
         return [ControlProfileOnly()]
 
     def get(self, request):
-        data_ambulancias = Ambulancia.objects.all().values('id', 'patente','modelo','estado_disponibilidad')
-        return Response(list(data_ambulancias), status=status.HTTP_200_OK)
-
+        if request.query_params:
+            r = gets.get_perid(request)
+            return Response(r, status=status.HTTP_200_OK)
+        else:
+            r = gets.get_all()
+            return Response(r, status=status.HTTP_200_OK)
 
 # API para OPERAR datos del personal
 class DataPersonal(APIView):

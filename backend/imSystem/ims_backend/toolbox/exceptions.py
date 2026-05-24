@@ -23,3 +23,9 @@ class NotFoundException(APIException):
     status_code = status.HTTP_404_NOT_FOUND
     default_detail = 'Not Found'
     default_code = 'error'
+
+
+class UnAuthorizedException(APIException):
+    status_code=status.HTTP_401_UNAUTHORIZED
+    default_detail='Not authorized request'
+    default_code='error'
