@@ -43,7 +43,7 @@ def all():
             amb_id = data.ambulancia.id
             if amb_id not in r:
                 r[amb_id] = {
-                    "id": data.ambulancia.id,
+                    "ambulancia_id":data.ambulancia.id,
                     "patente": data.ambulancia.patente,
                     "estado": data.ambulancia.estado_disponibilidad,
                     "stock": []
