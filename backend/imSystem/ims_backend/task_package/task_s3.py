@@ -1,5 +1,5 @@
 from celery import shared_task
-from ..aws.s3 import s3_client
+from ims_backend.aws_package.s3 import s3_client
 from backend_config.settings import AWS_BUCKET_NAME
 @shared_task
 def enviar_s3(json, hash_hex,signature):

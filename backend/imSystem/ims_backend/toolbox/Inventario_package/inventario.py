@@ -2,7 +2,7 @@ from ims_backend.models import *
 from django.shortcuts import get_object_or_404
 from ims_backend.serializers import InsumoIdSerializer
 from ims_backend.toolbox import exceptions
-def specific(valid_data):
+def specific(valid_data:InsumoIdSerializer):
     try:
         stock = get_object_or_404(StockInsumo.objects.select_related("presentacion__insumo__categoria", "ambulancia",
                                                                      "presentacion__unidad_medida"),

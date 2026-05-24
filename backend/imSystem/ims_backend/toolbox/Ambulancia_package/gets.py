@@ -1,7 +1,8 @@
-from ims_backend.models import *
 from ims_backend.toolbox import exceptions
 from ims_backend.serializers import AmbulanciaSerializerID
-from ims_backend.toolbox.Ambulancias import inventario
+from ims_backend.toolbox.Ambulancia_package import inventario
+
+
 def get_perid(request):
     if request.query_params:
         serializer = AmbulanciaSerializerID(data=request.query_params)

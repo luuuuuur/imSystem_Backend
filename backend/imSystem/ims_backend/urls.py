@@ -12,7 +12,10 @@ urlpatterns = [
     path("api/despachos/getall/", AllDespachos.as_view(), name="AllDespachos"),
     path("api/ambulancias/", AmbulanciaAPI.as_view(), name="AmbulanciaAPI"),
     path("api/atenciones/", RetornarAtencionAPI.as_view(), name="AtencionAPI"),
-    path("api/inv/get/", InsumosAPI.as_view(),name="InsumosAPI"),
+    path("api/inv/",GetInsumosAPI.as_view(), name="InsumosAPI"),
+    path("api/inv/add/", AddInsumoAPI.as_view(), name="AddInsumoAPI"),
+    path("api/inv/move/", MoveInsumoAPI.as_view(), name="MoveInsumoAPI"),
+    path("api/inv/update/", UpdateStockAPI.as_view(), name="UpdateStockAPI"),
     path("api/atenciones/add/", RegistroAtencionAPI.as_view(), name="RegistroAtencionAPI"),
 ]
 

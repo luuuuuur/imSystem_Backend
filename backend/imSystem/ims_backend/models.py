@@ -87,6 +87,11 @@ class InsumoMedico(models.Model):
     nombre_insumo = models.CharField(max_length=100)
     categoria = models.ForeignKey(CategoriaInsumo, on_delete=models.PROTECT, related_name="insumo_categoria", null=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['nombre_insumo']),
+        ]
+
     def __str__(self):
         return self.nombre_insumo
 
@@ -194,9 +199,8 @@ class SignosVitales(models.Model):
 
 class PresentacionInsumo(models.Model):
     insumo = models.ForeignKey(InsumoMedico, on_delete=models.PROTECT, related_name="presentacion_insumo")
-    cantidad = models.DecimalField(max_digits=10, decimal_places=2)
+    cantidad = models.DecimalField(max_digits=10, decimal_places=2) #200 MG X ej
     unidad_medida = models.ForeignKey(UnidadMedidaInsumo, on_delete=models.PROTECT, related_name="presentacion_um")
-
 class DetalleInsumoAtencion(models.Model):
     atencion = models.ForeignKey(Atencion, on_delete=models.CASCADE)
     insumo = models.ForeignKey(PresentacionInsumo, on_delete=models.PROTECT, related_name="insumos_utilizados")

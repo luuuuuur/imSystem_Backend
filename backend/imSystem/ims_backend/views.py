@@ -1,6 +1,5 @@
 # ─── DJANGO REST FRAMEWORK ───────────────────────────────────────────────────
 from rest_framework.views       import APIView
-from rest_framework             import status
 from rest_framework.response    import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
@@ -25,9 +24,7 @@ from .serializers import CreateDespachoSerializer
 from .serializers import AsignarDespachoSerializer
 from .serializers import ParamSerializer
 from .serializers import ParamPacienteSerializer
-from .serializers import PayloadSerializer
 from .serializers import ParamAtencionSerializer
-from .serializers import ObtenerDespachoSerializer
 from .serializers import AuthenticationSerializer
 # ─── MODELS ──────────────────────────────────────────────────────────────────
 from .models import Personal
@@ -40,23 +37,23 @@ from .models import Ambulancia
 from .models import DespachoPersonal
 from .models import Atencion
 # ─── LOCAL / AWS ─────────────────────────────────────────────────────────────
-from ims_backend.toolbox.Atenciones.add_atencion import add_atencion
-from ims_backend.toolbox.Despachos.all_despachos import all_despachos
-from ims_backend.toolbox.Despachos.solicitud_usuario import solicitud_usuario
-from ims_backend.toolbox.Inventario import (gets)
-from ims_backend.toolbox.Ambulancias import (gets)
+from ims_backend.toolbox.Atenciones_package.add_atencion import add_atencion
+from ims_backend.toolbox.Despachos_package.all_despachos import all_despachos
+from ims_backend.toolbox.Despachos_package.solicitud_usuario import solicitud_usuario
+from .toolbox.Inventario_package import add, gets, update
+from .toolbox.Ambulancia_package import gets, move
 from .utils              import(get_s3_download_url, generate_totp, generate_password)
 from botocore.exceptions import ClientError
 from .totp_auth.authentication import authentication
+from ims_backend.toolbox.exceptions import *
 # =============================================================================
 # PERMISOS PERSONALIZADOS
 # =============================================================================
 
 # Permiso custom: restringe acceso a usuarios con rol control
 # Usar en vistas donde solo personal de control debe operar (como por ejemplo asignar trabajores, despachos etc)
-from ims_backend.auth.permissions import (ControlProfileOnly,
-                              NurseProfileOnly, DriverProfileOnly,
-                              MedicProfileOnly,MFAVerified)
+from ims_backend.auth_package.permissions import (ControlProfileOnly,
+                                                  NurseProfileOnly, MedicProfileOnly, MFAVerified)
 
 # =============================================================================
 # UTILIDADES
@@ -114,12 +111,9 @@ class Login(EnsureCsrfMixin, APIView):
 
 # ─── TODO ─────────────────────────────────────────────────────────────────────
 #TODO: Creacion de la api para cargar y actualizar datos del inventario
-class Inventory(APIView):
-    permission_classes  = [ControlProfileOnly]
 
-
-#API para obtener TODOS los insumos
-class InsumosAPI(APIView):
+# #API para obtener TODOS los insumos
+class GetInsumosAPI(APIView):
     def get_permissions(self):
         if self.request.method == 'GET':
             return [MFAVerified()]
@@ -131,6 +125,35 @@ class InsumosAPI(APIView):
         else:
             r = gets.get_all()
             return Response(r, status=status.HTTP_200_OK)
+class AddInsumoAPI(APIView):
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [MFAVerified()]
+        else:
+            return [ControlProfileOnly()]
+    def post(self, request):
+        r = add(request)
+        return Response({}, status=status.HTTP_201_CREATED)
+
+class UpdateStockAPI(APIView):
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [MFAVerified()]
+        else:
+            return [ControlProfileOnly()]
+    def patch(self, request):
+        r = update(request)
+        return  Response({}, status=status.HTTP_200_OK)
+class MoveInsumoAPI(APIView):
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [MFAVerified()]
+        else:
+            return [ControlProfileOnly()]
+
+    def patch(self, request):
+        r = move.move_item(request)
+        return Response({}, status=status.HTTP_200_OK)
 # API para OBTENER las ambulancias
 class AmbulanciaAPI(APIView):
     def get_permissions(self):

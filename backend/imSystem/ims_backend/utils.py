@@ -1,7 +1,7 @@
 import pyotp
 import secrets
 import string
-from .aws.s3 import s3_client
+from ims_backend.aws_package.s3 import s3_client
 from botocore.exceptions import ClientError
 from backend_config.settings import secrets
 

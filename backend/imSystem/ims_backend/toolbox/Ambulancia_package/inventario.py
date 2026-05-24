@@ -1,5 +1,4 @@
 from ims_backend.models import *
-from django.shortcuts import get_object_or_404
 from ims_backend.toolbox import exceptions
 def specific(valid_data):
     try:

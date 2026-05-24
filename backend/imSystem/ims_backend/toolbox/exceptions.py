@@ -1,3 +1,4 @@
+
 from rest_framework import status
 from rest_framework.exceptions import APIException
 
@@ -19,6 +20,7 @@ class InternalServerException(APIException):
     default_detail = 'Internal Server Error'
     default_code = 'error'
 
+
 class NotFoundException(APIException):
     status_code = status.HTTP_404_NOT_FOUND
     default_detail = 'Not Found'
@@ -26,6 +28,7 @@ class NotFoundException(APIException):
 
 
 class UnAuthorizedException(APIException):
-    status_code=status.HTTP_401_UNAUTHORIZED
-    default_detail='Not authorized request'
-    default_code='error'
+    status_code = status.HTTP_401_UNAUTHORIZED
+    default_detail = 'Not authorized request'
+    default_code = 'error'
+

@@ -1,12 +1,13 @@
 # ---- DJANGO DRF SERIALIZERS ----
+
 from rest_framework import serializers
 
 # ---- MODELS ----
 from .models import (
-    Paciente, Ambulancia, Personal, Despacho,
-    Atencion, GrupoPersonal, SuscritosAGrupo, SignosVitales, PreInforme,
+    Ambulancia, Personal, Atencion, GrupoPersonal, SuscritosAGrupo, SignosVitales, PreInforme,
     Cronologia
 )
+
 
 class PersonalSerializer(serializers.ModelSerializer):
     rol_nombre = serializers.CharField(source='rol.nombre_rol', read_only=True, default=None)
@@ -148,3 +149,24 @@ class InsumoIdSerializer(serializers.Serializer):
     insumo_id = serializers.IntegerField()
 class AmbulanciaSerializerID(serializers.Serializer):
     ambulancia_id = serializers.IntegerField()
+class UpdateInsumoSerializer(serializers.Serializer):
+    presentacion_id = serializers.IntegerField()
+    ambulancia_id = serializers.IntegerField()
+    cantidad = serializers.IntegerField()
+
+class AddInsumoSerializer(serializers.Serializer):
+    nombre_insumo = serializers.CharField()
+    categoria = serializers.IntegerField()#FK
+    cantidad = serializers.DecimalField()#DEL MEDICAMENTO: EJ 200/MG ETC...
+    unidad_medida_id = serializers.IntegerField()#FK
+    stock = serializers.IntegerField()#CANTIDAD QUE HAY
+    ambulancia_id = serializers.IntegerField()#FK
+
+class BulkAddInsumoSerializer(serializers.Serializer):
+    items = AddInsumoSerializer(many=True)
+
+class MoveItemSerializer(serializers.Serializer):
+    presentacion_id = serializers.IntegerField()
+    ambulancia_to_id = serializers.IntegerField()
+    ambulancia_from_id = serializers.IntegerField()
+    cantidad = serializers.IntegerField()
