@@ -26,7 +26,9 @@ def add(request):
                                                              ambulancia_id = data["ambulancia_id"])
                                                  for i, data in enumerate(valid_data)])
             return True
-        except:
-            raise exceptions.InternalServerException(detail="Fallo al guardar a la base de datos, ningun dato ha sido ingresado")
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise exceptions.InternalServerException(detail=str(e))
     else:
         raise exceptions.BadRequestException(detail="Typos incorrectos")
