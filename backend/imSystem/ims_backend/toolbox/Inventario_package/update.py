@@ -17,7 +17,8 @@ def update(request):
             if updated == 0:
                 raise NotFoundException(detail="Presentacion o Ambulancia no encontrada")
             return  updated > 0
-        except:
-            raise InternalServerException(detail="Error al actualizar")
+        except Exception as e:
+            error = str(e)
+            raise InternalServerException(detail=error)
     else:
         raise BadRequestException(detail="Los campos no estan siendo nombrados correctamente")
