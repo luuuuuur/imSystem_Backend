@@ -156,7 +156,7 @@ class UpdateInsumoSerializer(serializers.Serializer):
 
 class AddInsumoSerializer(serializers.Serializer):
     nombre_insumo = serializers.CharField()
-    categoria = serializers.IntegerField()#FK
+    categoria_id = serializers.IntegerField()#FK
     cantidad = serializers.DecimalField(max_digits=10, decimal_places=1)#DEL MEDICAMENTO: EJ 200/MG ETC...
     unidad_medida_id = serializers.IntegerField()#FK
     stock = serializers.IntegerField()#CANTIDAD QUE HAY
