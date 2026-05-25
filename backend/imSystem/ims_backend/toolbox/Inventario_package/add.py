@@ -26,9 +26,7 @@ def add(request):
                                                              ambulancia_id = data["ambulancia_id"])
                                                  for i, data in enumerate(valid_data)])
             return True
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            raise exceptions.InternalServerException(detail=str(e))
+        except:
+            raise exceptions.InternalServerException(detail="Fallo al añadir los registros")
     else:
         raise exceptions.BadRequestException(detail="Typos incorrectos")
