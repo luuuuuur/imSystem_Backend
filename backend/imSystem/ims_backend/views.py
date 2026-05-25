@@ -132,7 +132,7 @@ class AddInsumoAPI(APIView):
         else:
             return [ControlProfileOnly()]
     def post(self, request):
-        r = add(request)
+        r = add.add(request)
         return Response({}, status=status.HTTP_201_CREATED)
 
 class UpdateStockAPI(APIView):
@@ -142,7 +142,7 @@ class UpdateStockAPI(APIView):
         else:
             return [ControlProfileOnly()]
     def patch(self, request):
-        r = update(request)
+        r = update.update(request)
         return  Response({}, status=status.HTTP_200_OK)
 class MoveInsumoAPI(APIView):
     def get_permissions(self):
