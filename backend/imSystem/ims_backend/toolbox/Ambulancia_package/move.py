@@ -34,6 +34,7 @@ def move_item(request):
         except (ConflictException, BadRequestException, InternalServerException):
             raise
         except Exception:
+            print(f"ERROR REAL: {type(e).__name__}: {e}")
             raise NotFoundException(detail="Fallo al intentar encontrar los objetivos")
     else:
         raise BadRequestException(detail="Fallo al mover el item, typos incorrectos")
