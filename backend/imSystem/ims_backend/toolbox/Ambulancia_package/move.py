@@ -20,7 +20,7 @@ def move_item(request):
                                                  presentacion_id=valid_data["presentacion_id"],
                                                  ambulancia_id=valid_data["ambulancia_from_id"])
 
-                if stock_origen.stock < valid_data["stock"]:
+                if stock_origen.stock < valid_data["cantidad"]:
                     raise ConflictException(detail="No hay suficiente stock en el origen")
                 stock_destino, _ = StockInsumo.objects.get_or_create(presentacion_id=valid_data["presentacion_id"],
                                                                      ambulancia_id=valid_data["ambulancia_to_id"],
@@ -34,7 +34,7 @@ def move_item(request):
                     raise InternalServerException(detail="Fallo al intentar mover la presentacion")
         except (ConflictException, BadRequestException, InternalServerException):
             raise
-        except Exception:
+        except Exception as e:
             print(f"ERROR REAL: {type(e).__name__}: {e}")
             raise NotFoundException(detail="Fallo al intentar encontrar los objetivos")
     else:
