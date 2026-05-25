@@ -1,5 +1,6 @@
 from django.db.models import F
-
+import logging
+logger = logging.getLogger(__name__)
 from ims_backend.models import StockInsumo
 from ims_backend.serializers import MoveItemSerializer
 from django.shortcuts import get_object_or_404
