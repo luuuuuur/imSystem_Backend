@@ -1,5 +1,5 @@
 from ims_backend.models import StockInsumo
-from ims_backend.toolbox import exceptions
+from ims_backend.toolbox.exceptions import NotFoundException, InternalServerException, BadRequestException
 from ims_backend.serializers import UpdateInsumoSerializer
 from django.db.models import F
 
@@ -15,9 +15,9 @@ def update(request):
             )
             updated = stock.update(stock=F("stock") + valid_data["cantidad"])
             if updated == 0:
-                raise exceptions.NotFoundException(detail="Presentacion o Ambulancia no encontrada")
+                raise NotFoundException(detail="Presentacion o Ambulancia no encontrada")
             return  updated > 0
         except:
-            raise exceptions.InternalServerException
+            raise InternalServerException(detail="Error al actualizar")
     else:
-        raise exceptions.BadRequestException
+        raise BadRequestException(detail="Los campos no estan siendo nombrados correctamente")
