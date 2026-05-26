@@ -223,8 +223,8 @@ class DataPersonal(APIView):
                     'usuario_id': usuario.id
                 }, status=status.HTTP_201_CREATED)
                 
-            except Exception:
-                return Response({'error': 'failed to generate the uri and user data'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            except Exception as e:
+                return Response({'error': f'failed to generate the uri and user data + {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
