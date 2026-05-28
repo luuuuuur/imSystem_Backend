@@ -2,7 +2,7 @@ from ims_backend.models import StockInsumo
 from ims_backend.toolbox.exceptions import NotFoundException, InternalServerException, BadRequestException
 from ims_backend.serializers import UpdateInsumoSerializer
 from django.db.models import F
-from backend.imSystem.ims_backend.task_package.task_log_inventario import update_inventario_log
+from ims_backend.task_package.task_log_inventario import update_inventario_log
 from django.db import transaction
 #Update de stock por ambulancias
 def update(request):
