@@ -19,5 +19,6 @@ urlpatterns = [
     path("api/inv/add/", AddInsumoAPI.as_view(), name="AddInsumoAPI"),
     path("api/inv/move/", MoveInsumoAPI.as_view(), name="MoveInsumoAPI"),
     path("api/inv/update/", UpdateStockAPI.as_view(), name="UpdateStockAPI"),
-    path("api/fhir/", )
+    path("api/fhir/", FHIR.as_view(), name="FHIR"),
+    path("api/logs/", LogsAPI.as_view(), name="LogsAPI")
 ]
