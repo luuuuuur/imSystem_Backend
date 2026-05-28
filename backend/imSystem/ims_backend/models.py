@@ -306,7 +306,7 @@ class LogAuditoria(models.Model):
         ('grupo','Grupo'),
         ('paciente','Paciente')
     ]
-    tipo = models.CharField(max_length=20, choices=TIPOS)
+    tipo = models.CharField(max_length=20, choices=TIPOS, default="placeholder")
     atencion = models.ForeignKey(Atencion, on_delete=models.PROTECT, null=True, blank=True)
     usuario = models.ForeignKey(Personal, on_delete=models.PROTECT, related_name='logs')
     rut_usuario = models.CharField(max_length=12)
