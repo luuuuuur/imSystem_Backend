@@ -36,3 +36,4 @@ maturin
 celery
 redis
 django-celery-results
+fhir.resources

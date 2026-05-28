@@ -3,7 +3,7 @@ from rest_framework.views       import APIView
 from rest_framework.response    import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
-
+from rest_framework import status
 # ─── DJANGO ──────────────────────────────────────────────────────────────────
 from django.contrib.auth            import authenticate, login
 from django.shortcuts               import get_object_or_404
@@ -40,12 +40,18 @@ from .models import Atencion
 from ims_backend.toolbox.Atenciones_package.add_atencion import add_atencion
 from ims_backend.toolbox.Despachos_package.all_despachos import all_despachos
 from ims_backend.toolbox.Despachos_package.solicitud_usuario import solicitud_usuario
-from .toolbox.Inventario_package import add, gets, update
-from .toolbox.Ambulancia_package import gets, move
+from .toolbox.Inventario_package import add, gets as gets_inventario, update
+from .toolbox.Ambulancia_package import gets as gets_ambulancia, move
 from .utils              import(get_s3_download_url, generate_totp, generate_password)
 from botocore.exceptions import ClientError
 from .totp_auth.authentication import authentication
 from ims_backend.toolbox.exceptions import *
+from ims_backend.task_package.task_log_grupos import crear_grupo_log, agregar_miembros_log,actualizar_estado_miembros_log
+from ims_backend.task_package.task_log_paciente import agregar_paciente_log
+from ims_backend.task_package.task_log_despacho import crear_despacho_log, asignar_despacho_log
+from ims_backend.task_package.task_log_personal import agregar_personal_log
+from ims_backend.toolbox.exceptions import InternalServerException
+from ims_backend.toolbox.Logs_package.chunks_get import get_by_chunks
 # =============================================================================
 # PERMISOS PERSONALIZADOS
 # =============================================================================
@@ -72,7 +78,7 @@ class EnsureCsrfMixin:
 class Login(EnsureCsrfMixin, APIView):
     #TODO: Implementacion de MFA con Google Authenticator (TOTP)
     permission_classes = [AllowAny]
-
+    http_method_names = ['get', 'post']
     def get(self, request):
         return Response({}, status=status.HTTP_200_OK)
 
@@ -114,48 +120,39 @@ class Login(EnsureCsrfMixin, APIView):
 
 # #API para obtener TODOS los insumos
 class GetInsumosAPI(APIView):
-    def get_permissions(self):
-        if self.request.method == 'GET':
-            return [MFAVerified()]
-        return [ControlProfileOnly()]
+    http_method_names = ['get']
+    permission_classes = [ControlProfileOnly & MFAVerified]
+    
     def get(self, request):
         if request.query_params:
-            r = gets.get_perid(request)
+            r = gets_inventario.get_perid(request)
             return Response(r,status=status.HTTP_200_OK)
         else:
-            r = gets.get_all()
+            r = gets_inventario.get_all()
             return Response(r, status=status.HTTP_200_OK)
 class AddInsumoAPI(APIView):
-    def get_permissions(self):
-        if self.request.method == 'GET':
-            return [MFAVerified()]
-        else:
-            return [ControlProfileOnly()]
+    permission_classes = [ControlProfileOnly & MFAVerified]
+    http_method_names = ['post']
     def post(self, request):
         r = add.add(request)
         return Response({}, status=status.HTTP_201_CREATED)
 
 class UpdateStockAPI(APIView):
-    def get_permissions(self):
-        if self.request.method == 'GET':
-            return [MFAVerified()]
-        else:
-            return [ControlProfileOnly()]
+    http_method_names = ['patch']
+    permission_classes = [ControlProfileOnly & MFAVerified]
     def patch(self, request):
         r = update.update(request)
         return  Response({}, status=status.HTTP_200_OK)
 class MoveInsumoAPI(APIView):
-    def get_permissions(self):
-        if self.request.method == 'GET':
-            return [MFAVerified()]
-        else:
-            return [ControlProfileOnly()]
+    http_method_names = ['patch']
+    permission_classes = [ControlProfileOnly & MFAVerified]
 
     def patch(self, request):
         r = move.move_item(request)
         return Response({}, status=status.HTTP_200_OK)
 # API para OBTENER las ambulancias
 class AmbulanciaAPI(APIView):
+    http_method_names = ['get']
     def get_permissions(self):
         if self.request.method == 'GET':
             return [IsAuthenticated()]
@@ -163,20 +160,16 @@ class AmbulanciaAPI(APIView):
 
     def get(self, request):
         if request.query_params:
-            r = gets.get_perid(request)
+            r = gets_ambulancia.get_perid(request)
             return Response(r, status=status.HTTP_200_OK)
         else:
-            r = gets.get_all()
+            r = gets_ambulancia.get_all()
             return Response(r, status=status.HTTP_200_OK)
 
 # API para OPERAR datos del personal
 class DataPersonal(APIView):
-    def get_permissions(self):
-        # Paréntesis agregados para instanciar las clases correctamente
-        if self.request.method == 'GET':
-            return [MFAVerified()]
-        return [ControlProfileOnly()]
-
+    http_method_names = ['get','post']
+    permission_classes = [MFAVerified & ControlProfileOnly]
     def get(self, request):
         personal_activo = Personal.objects.filter(is_active=True).select_related('rol')
         
@@ -184,7 +177,7 @@ class DataPersonal(APIView):
         serializer = PersonalSerializer(personal_activo, many=True)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
-
+    #Agregar un trabajador
     def post(self, request):
         serializer = PersonalSerializer(data=request.data)
 
@@ -205,23 +198,28 @@ class DataPersonal(APIView):
                 temp = generate_password()
                 uri = totp.provisioning_uri(name=rut, issuer_name='IMS Sistema')
                 
-               
-                usuario = Personal.objects.create_user(
-                    username=rut,
-                    first_name=first_name,
-                    last_name=last_name,
-                    password=temp,
-                    totp_secret=key,
-                    rut=rut,
-                    rol=rol
-                )
-                
+                with transaction.atomic():
+                    usuario = Personal.objects.create_user(
+                        username=rut,
+                        first_name=first_name,
+                        last_name=last_name,
+                        password=temp,
+                        totp_secret=key,
+                        rut=rut,
+                        rol=rol
+                    )
+                    log_data = {
+                        "rut": request.user.rut,
+                        "user_id":request.user.id,
+                        "rut_trabajador":usuario.rut
+                    }
+                    transaction.on_commit(lambda: agregar_personal_log.delay(data=log_data))
                 return Response({
-                    'success': 'success', 
-                    'totp_uri': uri, 
-                    'password': temp,
-                    'usuario_id': usuario.id
-                }, status=status.HTTP_201_CREATED)
+                        'success': 'success', 
+                        'totp_uri': uri, 
+                        'password': temp,
+                        'usuario_id': usuario.id
+                    }, status=status.HTTP_201_CREATED)
                 
             except Exception as e:
                 return Response({'error': f'failed to generate the uri and user data + {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -236,61 +234,16 @@ class DataPersonal(APIView):
 
 # API para REGISTRAR las atenciones post-despacho y subir los documentos firmados al S3
 class RegistroAtencionAPI(APIView):
+    http_method_names = ['post']
     permission_classes = [NurseProfileOnly | MedicProfileOnly]
-
     def post(self,request):
         result = add_atencion(request)
         return Response(result, status=status.HTTP_201_CREATED)
 
-# API para creacion de GRUPOS de trabajo
-class Grupos(APIView):
-    def get_permissions(self):
-        if self.request.method == 'GET':
-            return[IsAuthenticated()]
-        return [ControlProfileOnly()]
 
-    def post(self, request):
-        serializer = CrearGrupoSerializer(data=request.data)
-
-        if serializer.is_valid():
-            valid_data = serializer.validated_data
-            try:
-                with transaction.atomic():
-                    grupo = GrupoPersonal.objects.create(nombre_grupo=valid_data['nombre_grupo'])
-                    personas = Personal.objects.filter(id__in=valid_data['personal'])
-                    SuscritosAGrupo.objects.bulk_create([
-                        SuscritosAGrupo(grupo=grupo, personal=persona)
-                        for persona in personas
-                    ])
-                return Response({'success':'success', 'group_id': grupo.id}, status=status.HTTP_201_CREATED)
-            except Personal.DoesNotExist:
-                return Response({'error':'FATAL ERROR!: personal does not exists'}, status=status.HTTP_404_NOT_FOUND)
-            except Exception:
-                return Response({'error':'FATAL ERROR!: Failed to create the group'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def patch(self, request):
-        serializer = RemoverMiembroGrupo(data=request.data)
-        if serializer.is_valid():
-            valid_data = serializer.validated_data
-            try:
-                persona = get_object_or_404(Personal, id=valid_data['personal_id'])
-                grupo_to_update = get_object_or_404(GrupoPersonal,id=valid_data['group_id'])
-                with transaction.atomic():
-                    SuscritosAGrupo.objects.filter(
-                        grupo=grupo_to_update,
-                        personal=persona,
-                        fecha_salida=None
-                    ).update(
-                        fecha_salida=timezone.now()
-                    )
-                return Response({'success':'success'}, status=status.HTTP_200_OK)
-            except Exception:
-                return Response({'error':'FATAL ERROR!: failed to update the group'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+class GruposObtener(APIView):
+    http_method_names = ['get']
+    permission_classes = [ControlProfileOnly & MFAVerified]
     def get(self, request):
         if request.query_params:
             serializer = ParamSerializer(data=request.query_params)
@@ -315,7 +268,7 @@ class Grupos(APIView):
                         'dia_ingresado': suscripcion.fecha_entrada,
                         'dia_salida': suscripcion.fecha_salida
                     })
-                    return Response(list(grupos.values()), status=status.HTTP_200_OK)
+                return Response(list(grupos.values()), status=status.HTTP_200_OK)
             else:
                 return Response({'error':'not correct format or id'}, status=status.HTTP_400_BAD_REQUEST)
         else:
@@ -340,12 +293,73 @@ class Grupos(APIView):
                     'dia_salida': suscripcion.fecha_salida
                 })
             return Response(list(grupos.values()), status=status.HTTP_200_OK)
+        
 
+class GrupoCrear(APIView):
+    http_method_names = ['post']
+    permission_classes = [ControlProfileOnly & MFAVerified]
+    def post(self, request):
+        serializer = CrearGrupoSerializer(data=request.data)
+
+        if serializer.is_valid():
+            valid_data = serializer.validated_data
+            try:
+                with transaction.atomic():
+                    grupo = GrupoPersonal.objects.create(nombre_grupo=valid_data['nombre_grupo'])
+                    personas = Personal.objects.filter(id__in=valid_data['personal'])
+                    SuscritosAGrupo.objects.bulk_create([
+                        SuscritosAGrupo(grupo=grupo, personal=persona)
+                        for persona in personas
+                    ])
+                    log_data = dict(valid_data)
+                    log_data["user_id"] = request.user.id
+                    log_data["rut"] = request.user.rut
+                    transaction.on_commit(lambda:crear_grupo_log.delay(data = log_data))
+                return Response({'success':'success', 'group_id': grupo.id}, status=status.HTTP_201_CREATED)
+            except Personal.DoesNotExist:
+                return Response({'error':'FATAL ERROR!: personal does not exists'}, status=status.HTTP_404_NOT_FOUND)
+            except Exception:
+                return Response({'error':'FATAL ERROR!: Failed to create the group'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GrupoRemoverMiembro(APIView):
+    http_method_names = ['patch']
+    permission_classes = [ControlProfileOnly & MFAVerified]
+    def patch(self, request):
+        serializer = RemoverMiembroGrupo(data=request.data)
+        if serializer.is_valid():
+            valid_data = serializer.validated_data
+            try:
+                persona = get_object_or_404(Personal, id=valid_data['personal_id'])
+                grupo_to_update = get_object_or_404(GrupoPersonal,id=valid_data['group_id'])
+                with transaction.atomic():
+                    SuscritosAGrupo.objects.filter(
+                        grupo=grupo_to_update,
+                        personal=persona,
+                        fecha_salida=None
+                    ).update(
+                        fecha_salida=timezone.now()
+                    )
+                    log_data = {
+                        "personal_rut": persona.rut,
+                        "group_id":grupo_to_update.id,
+                        "group_name":grupo_to_update.nombre_grupo,
+                        "rut":request.user.rut,
+                        "id":request.user.id
+                    }
+                    transaction.on_commit(lambda:actualizar_estado_miembros_log.delay(data=log_data))
+                return Response({'success':'success'}, status=status.HTTP_200_OK)
+            except Exception:
+                return Response({'error':'FATAL ERROR!: failed to update the group'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # API para AÑADIR miembros a grupos YA EXISTENTES
 class AddMemberToGroup(APIView):
+    http_method_names = ['post']
     permission_classes = [ControlProfileOnly]
-
     def post(self, request):
         serializer = AgregarMiembroGrupo(data=request.data)
         if serializer.is_valid():
@@ -360,6 +374,14 @@ class AddMemberToGroup(APIView):
                     SuscritosAGrupo.objects.create(grupo=grupo_to_update, 
                                                 personal=persona, 
                                                 fecha_salida=None)
+                    log_data = {
+                        "user_id":request.user.id,
+                        "rut":request.user.rut,
+                        "group_id": grupo_to_update.id,
+                        "group_nombre":grupo_to_update.nombre_grupo,
+                        "personal_rut":persona.rut
+                    }
+                    transaction.on_commit(lambda: agregar_miembros_log.delay(data = log_data))
                 return Response({'success':'success'}, status=status.HTTP_201_CREATED)
             except Exception:
                 return Response({'error':'FATAL ERROR! FAILED TO ADD MEMBER'}, status=status.HTTP_400_BAD_REQUEST)
@@ -369,6 +391,7 @@ class AddMemberToGroup(APIView):
 
 # API para el registro de los pacientes
 class RegistrosPacientesAPI(APIView):
+    http_method_names = ['get','post']
     def get_permissions(self):
         if self.request.method == 'GET':
             return[IsAuthenticated()]
@@ -379,13 +402,20 @@ class RegistrosPacientesAPI(APIView):
         if serializer.is_valid():
             valid_data = serializer.validated_data
             try:
-                Paciente.objects.create(rut=valid_data['rut'],
-                nombre_completo=valid_data['nombre_completo'],
-                fecha_nacimiento=valid_data['fecha_nacimiento'],
-                direccion=valid_data['direccion'],
-                condicion_paciente=valid_data['condicion_paciente'],
-                telefono=valid_data['telefono'], 
-                comuna=valid_data['comuna'])
+                with transaction.atomic():
+                    Paciente.objects.create(rut=valid_data['rut'],
+                    nombre_completo=valid_data['nombre_completo'],
+                    fecha_nacimiento=valid_data['fecha_nacimiento'],
+                    direccion=valid_data['direccion'],
+                    condicion_paciente=valid_data['condicion_paciente'],
+                    telefono=valid_data['telefono'], 
+                    comuna=valid_data['comuna'])
+                    log_data = {
+                        "paciente_rut": valid_data['rut'],
+                        "id":request.user.id,
+                        "rut":request.user.rut
+                    }
+                    transaction.on_commit(lambda: agregar_paciente_log.delay(data=log_data))
                 return Response({'success':'success'}, status=status.HTTP_200_OK)
             except Exception as e:
                 return Response({'error':f'{str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -418,6 +448,7 @@ class RegistrosPacientesAPI(APIView):
 #TODO: Creación de la API para la gestión de los datos de los pacientes(para cargar al documento)
 # API para CREAR los despachos
 class CreateDespacho(APIView):
+    http_method_names = ['post']
     permission_classes = [ControlProfileOnly]
     def post(self, request):
         serializer = CreateDespachoSerializer(data=request.data)
@@ -425,6 +456,11 @@ class CreateDespacho(APIView):
             valid_data = serializer.validated_data
             try:
                 paciente = get_object_or_404(Paciente, rut=valid_data['paciente_rut'])
+                log_data = {
+                    "paciente_rut": paciente.rut,
+                    "user_id":request.user.id,
+                    "rut":request.user.rut
+                }
                 with transaction.atomic():
                     despacho = Despacho.objects.create(
                         direccion_origen=valid_data['direccion_origen'],
@@ -434,6 +470,8 @@ class CreateDespacho(APIView):
                         creado_por=request.user,
                         estado='recibido'
                     )
+                    log_data["despacho_id"]=despacho.id
+                    transaction.on_commit(lambda: crear_despacho_log.delay(data=log_data))
                 return Response({'success':'success', 
                                  'despacho':
                                  {'id':despacho.id, 
@@ -450,6 +488,7 @@ class CreateDespacho(APIView):
 
 # API para asignar los despachos a un grupo previamente creado y existente
 class AsignarDespacho(APIView):
+    http_method_names = ['patch']
     permission_classes = [ControlProfileOnly]
     def patch(self, request):
         serializer = AsignarDespachoSerializer(data=request.data)
@@ -457,14 +496,22 @@ class AsignarDespacho(APIView):
             valid_data = serializer.validated_data
             try:
                 amb = get_object_or_404(Ambulancia, id=valid_data['amb_id'])
+                despacho=get_object_or_404(Despacho, id=valid_data['despacho_id'])
+                grupo_nombre=get_object_or_404(GrupoPersonal, id=valid_data['grupo_id'])
+                log_data = {
+                    "patente":amb.patente,
+                    "rut":request.user.rut,
+                    "user_id":request.user.id,
+                    "grupo_id":grupo_nombre.id,
+                    "nombre_grupo": grupo_nombre.nombre_grupo,
+                    "id":despacho.id
+                }
+                if DespachoPersonal.objects.filter(despacho=despacho, grupo=grupo_nombre).exists():
+                    return Response({'error': 'Este grupo ya está asignado a este despacho'}, status=status.HTTP_409_CONFLICT)
                 with transaction.atomic():
                     Despacho.objects.filter(id=valid_data['despacho_id']).update(
                         fecha_asignacion=timezone.now(),asignado_por=request.user,
                         ambulancia=amb, estado='asignado')
-                    despacho=get_object_or_404(Despacho, id=valid_data['despacho_id'])
-                    grupo_nombre=get_object_or_404(GrupoPersonal, id=valid_data['grupo_id'])
-                    if DespachoPersonal.objects.filter(despacho=despacho, grupo=grupo_nombre).exists():
-                        return Response({'error': 'Este grupo ya está asignado a este despacho'}, status=status.HTTP_409_CONFLICT)
                     DespachoPersonal.objects.create(despacho=despacho, grupo=grupo_nombre)
                     grupo_miembros = SuscritosAGrupo.objects.filter(grupo=grupo_nombre,fecha_salida = None )
                     personal = []
@@ -472,8 +519,8 @@ class AsignarDespacho(APIView):
                         personal.append({'personal_id':members.personal.id,
                                          'personal_rut': members.personal.rut,
                                          'personal_name':members.personal.full_name})
-                    
-                    return Response({'success':'success', 'despacho_data':{
+                    transaction.on_commit(lambda: asignar_despacho_log.delay(data=log_data))
+                return Response({'success':'success', 'despacho_data':{
                         'id':valid_data['despacho_id'],
                         'grupo':{
                             'nombre':grupo_nombre.nombre_grupo,
@@ -488,6 +535,7 @@ class AsignarDespacho(APIView):
 
 # API para obtener TODOS Los despachos sin necesidad de incluir al usuario per se
 class AllDespachos(APIView):
+    http_method_names = ['get']
     permission_classes = [IsAuthenticated]
     def get(self, request):
         r = all_despachos(request)
@@ -502,6 +550,7 @@ class AllDespachos(APIView):
 
 # API para retornar el despacho asignado al USUARIO LOGEADO AL MOMENTO DE HACER LA SOLICITUD, diferenciar de arriba que retorna todos los despachos
 class DespachoASolicitudUsuario(APIView):
+    http_method_names = ['get']
     def get_permissions(self):
         if self.request.method == 'GET':
             return [IsAuthenticated()]
@@ -509,13 +558,14 @@ class DespachoASolicitudUsuario(APIView):
 
     def get(self, request):
         r = solicitud_usuario(request)
-        return Response({r}, status=status.HTTP_200_OK)
+        return Response(r, status=status.HTTP_200_OK)
        
 
 
 # API para retornar las atenciones, recibe parámetros a través de URL
 class RetornarAtencionAPI(APIView):
     permission_classes=[IsAuthenticated]
+    http_method_names = ['get']
     def get(self, request):
         if request.query_params:
             serializer = ParamAtencionSerializer(data=request.query_params)
@@ -551,3 +601,12 @@ class RetornarAtencionAPI(APIView):
                     }if a.despacho else None
                 })
             return Response(response, status=status.HTTP_200_OK)
+        
+
+
+class LogsAPI(APIView):
+    http_method_names = ['get']
+    permission_classes = [ControlProfileOnly & MFAVerified]
+
+    def get(self, request):
+       return get_by_chunks()

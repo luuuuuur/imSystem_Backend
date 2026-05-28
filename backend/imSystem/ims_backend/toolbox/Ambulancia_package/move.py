@@ -1,11 +1,9 @@
 from django.db.models import F
-import logging
-logger = logging.getLogger(__name__)
 from ims_backend.models import StockInsumo
 from ims_backend.serializers import MoveItemSerializer
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-
+from ims_backend.task_package.task_log_ambulancias import mover_elemento_log
 from ims_backend.toolbox.exceptions import BadRequestException, InternalServerException, NotFoundException, ConflictException
 
 
@@ -27,8 +25,15 @@ def move_item(request):
                                                                      defaults={"stock": 0})
                 update_from = StockInsumo.objects.filter(id=stock_origen.id).update(stock = F("stock") - valid_data["cantidad"])
                 update_to = StockInsumo.objects.filter(id=stock_destino.id).update(stock = F("stock") + valid_data["cantidad"])
-
+                data={
+                    "rut": request.user.rut,
+                    "ambulancia_from_id": valid_data["ambulancia_from_id"],
+                    "ambulancia_to_id": valid_data["ambulancia_to_id"],
+                    "presentacion_id": valid_data["presentacion_id"],
+                    "cantidad": valid_data["cantidad"]
+                }
                 if update_from > 0 and update_to > 0:
+                    transaction.on_commit(lambda:mover_elemento_log.delay(data=data))
                     return True
                 else:
                     raise InternalServerException(detail="Fallo al intentar mover la presentacion")
@@ -39,3 +44,5 @@ def move_item(request):
             raise NotFoundException(detail="Fallo al intentar encontrar los objetivos")
     else:
         raise BadRequestException(detail="Fallo al mover el item, typos incorrectos")
+    
+    

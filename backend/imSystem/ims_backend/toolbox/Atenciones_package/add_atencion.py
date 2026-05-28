@@ -5,6 +5,7 @@ from ims_backend.models import *
 from django.shortcuts import get_object_or_404
 from django.forms.models import model_to_dict
 from ims_backend.task_package.task_s3 import enviar_s3
+from ims_backend.task_package.task_log_atencion import agregar_log_atencion
 import json
 import base64
 from ims_backend.toolbox.customencoder import CustomEncoder
@@ -30,7 +31,8 @@ def add_atencion(request):
                 atencion = Atencion.objects.create(
                     ambulancia=ambulancia, despacho=despacho,
                     hora_salida=despacho_data['hora_salida'],
-                    hora_llegada=despacho_data['hora_llegada']
+                    hora_llegada=despacho_data['hora_llegada'],
+                    rut_registrado=request.user.rut, rut_receptor=valid_data["rut_receptor"]
                 )
                 SignosVitales.objects.bulk_create([SignosVitales(atencion=atencion, **sv) for sv in svd])
                 pre = PreInforme.objects.create(
@@ -49,22 +51,21 @@ def add_atencion(request):
                     salida_qth2=cronologia_data['salida_qth2'],
                     categoria=cronologia_data['categoria']
                 )
-                ids_insumos = [item['insumo_id'] for item in insumos_data]
-                insumos_locked = {i.id: i for i in InsumoMedico.objects.select_for_update().filter(id__in=ids_insumos)}
-                for insumo_data in insumos_data:
-                    insumo = insumos_locked[insumo_data['insumo_id']]
-                    if insumo.stock_total < insumo_data['dosis']:
-                        raise ValueError(f"Stock insuficiente para {insumo.nombre_insumo}")
-                for insumo_data in insumos_data:
-                    InsumoMedico.objects.filter(id=insumo_data['insumo_id']).update(
-                        stock_total=F('stock_total') - insumo_data['dosis']
-                    )
-                    DetalleInsumoAtencion.objects.create(
+                ids_presentaciones = [item['presentacion_id'] for item in insumos_data]
+                stock_locked = {i.presentacion_id: i for i in StockInsumo.objects.select_for_update().filter(presentacion__id__in=ids_presentaciones, ambulancia=ambulancia)}
+                
+                for presentacion in insumos_data:
+                    insumo = stock_locked[presentacion["presentacion_id"]]
+                    if insumo.stock < presentacion["cantidad_usada"]:
+                        raise exceptions.ConflictException
+                for presentacion in insumos_data:
+                    StockInsumo.objects.filter(presentacion__id = presentacion["presentacion_id"], ambulancia=ambulancia).update(stock=F('stock') - presentacion["cantidad_usada"])
+                    DetalleInsumoAtencion.objects.bulk_create([DetalleInsumoAtencion(
                         atencion=atencion,
-                        insumo_id=insumo_data['insumo_id'],
-                        dosis=insumo_data['dosis'],
-                        observaciones=insumo_data['observaciones']
-                    )
+                        insumo_id=presentacion["presentacion_id"],
+                        observaciones=presentacion["observaciones"],
+                        cantidad_usada=presentacion["cantidad_usada"]
+                    )])
                 document = {
                     "atencion": model_to_dict(atencion),
                     "paciente": {
@@ -76,6 +77,7 @@ def add_atencion(request):
                         "rut": request.user.rut,
                         "rol": request.user.rol.nombre_rol
                     },
+                    "recibido_por":atencion.rut_receptor,
                     "signos_vitales": list(SignosVitales.objects.filter(atencion=atencion).values(
                         'id', 'atencion_id', 'timestamp', 'presion_sistolica', 'presion_diastolica',
                         'frecuencia_cardiaca', 'saturacion_oxigeno', 'temperatura', 'fr', 'fio2',
@@ -84,7 +86,7 @@ def add_atencion(request):
                     "preinforme": model_to_dict(pre),
                     "cronologia": model_to_dict(crono),
                     "insumos_utilizados": list(DetalleInsumoAtencion.objects.filter(atencion=atencion)
-                                               .values('insumo__nombre_insumo', 'dosis', 'observaciones')),
+                                               .values('insumo__insumo__nombre_insumo', 'cantidad_usada', 'observaciones')),
                 }
                 prepared_data = json.dumps(document, sort_keys=True, ensure_ascii=False, cls=CustomEncoder).encode('utf-8')
                 hash_bytes, signature = rustjson.data(prepared_data)
@@ -103,6 +105,7 @@ def add_atencion(request):
                 )
                 despacho.estado = "finalizado"
                 despacho.save(update_fields=["estado"])
+                transaction.on_commit(lambda:agregar_log_atencion.delay(documento=document))
         except ValueError as ve:
             raise exceptions.BadRequest(detail=str(ve))
         except Exception as e:
@@ -110,6 +113,7 @@ def add_atencion(request):
         try:
             file_json = json.dumps(document, ensure_ascii=False, cls=CustomEncoder)
             enviar_s3.delay(file_json, hash_bytes.hex(), base64.b64encode(signature).decode())
+            
             return {"success": "Succeeded", "hash": hash_bytes.hex()}
         except Exception:
             raise exceptions.InternalServerException(detail="Failed to upload to S3")

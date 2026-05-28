@@ -171,9 +171,12 @@ class Atencion(models.Model):
 
     sello_electronico = models.TextField(blank=True, null=True, help_text="Hash de integridad")
     estado_sello = models.CharField(max_length=20, default="Pendiente")
+    rut_registrador = models.ForeignKey(Personal, null=False, blank= False)
+    rut_receptor = models.CharField(max_length=12, null=True, blank=True, help_text="Si está en blanco fue recibido por la misma institución")
     def __str__(self):
         return f"Atención {self.id} - {self.despacho.paciente.nombre_completo if self.despacho 
                                        and self.despacho.paciente else 'Sin paciente'}"
+
 class SignosVitales(models.Model):
     atencion = models.ForeignKey(Atencion, on_delete=models.CASCADE, related_name='signos_vitales')
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -295,38 +298,21 @@ class TicketCredencial(models.Model):
 
 
 class LogAuditoria(models.Model):
-    atencion = models.ForeignKey(
-        Atencion,
-        on_delete=models.PROTECT,
-        related_name='logs',
-        help_text="Atención a la que pertenece esta acción"
-    )
-    usuario = models.ForeignKey(
-        Personal,
-        on_delete=models.PROTECT,
-        related_name='acciones',
-        help_text="Personal que ejecutó la acción"
-    )
-    rut_usuario = models.CharField(
-        max_length=12,
-        help_text="RUT duplicado para preservar trazabilidad si el usuario se elimina"
-    )
-    descripcion = models.TextField(
-        help_text="Ej: 'Administró 500mg de paracetamol vía oral'"
-    )
+    TIPOS = [
+        ('atencion', 'Atención'),
+        ('inventario', 'Inventario'),
+        ('ambulancia', 'Ambulancia'),
+        ('despacho', 'Despacho'),
+        ('grupo','Grupo'),
+        ('paciente','Paciente')
+    ]
+    tipo = models.CharField(max_length=20, choices=TIPOS)
+    atencion = models.ForeignKey(Atencion, on_delete=models.PROTECT, null=True, blank=True)
+    usuario = models.ForeignKey(Personal, on_delete=models.PROTECT, related_name='logs')
+    rut_usuario = models.CharField(max_length=12)
+    descripcion = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        indexes = [
-            models.Index(fields=['atencion', 'timestamp']),
-            models.Index(fields=['usuario', 'timestamp']),
-        ]
-        ordering = ['timestamp']
-
-    def __str__(self):
-        return f"[{self.timestamp}] {self.rut_usuario} - {self.descripcion[:50]}"
     
-
 
 class DeviceToken(models.Model):
     device_token = models.CharField(max_length=255, null=False, blank=False, unique=True)

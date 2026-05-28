@@ -131,8 +131,8 @@ class DespachoAtencionSerializer(serializers.Serializer):
     hora_salida = serializers.DateTimeField(required=True)
     hora_llegada = serializers.DateTimeField(required=False)
 class InsumoUtilizadoSerializer(serializers.Serializer):
-    insumo_id = serializers.IntegerField()
-    dosis=serializers.DecimalField(max_digits=10, decimal_places=1)
+    presentacion_id = serializers.IntegerField()
+    cantidad_usada = serializers.IntegerField()
     observaciones = serializers.CharField(max_length=255, required=False)
 class PayloadSerializer(serializers.Serializer):
     despacho = DespachoAtencionSerializer()
@@ -140,7 +140,7 @@ class PayloadSerializer(serializers.Serializer):
     preinforme = PreInformeSerializer()
     cronologia = CronologiaSerializer()
     insumos_utilizados = InsumoUtilizadoSerializer(many=True)
-
+    rut_receptor = serializers.CharField()
 class AuthenticationSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField()
