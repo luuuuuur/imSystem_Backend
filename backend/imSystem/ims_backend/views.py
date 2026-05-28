@@ -52,6 +52,7 @@ from ims_backend.task_package.task_log_despacho import crear_despacho_log, asign
 from ims_backend.task_package.task_log_personal import agregar_personal_log
 from ims_backend.toolbox.exceptions import InternalServerException
 from ims_backend.toolbox.Logs_package.chunks_get import get_by_chunks
+from ims_backend.toolbox.Fhir_package.export_r4 import export_hl7
 # =============================================================================
 # PERMISOS PERSONALIZADOS
 # =============================================================================
@@ -610,3 +611,9 @@ class LogsAPI(APIView):
 
     def get(self, request):
        return get_by_chunks()
+
+
+class FHIR(APIView):
+    permission_classes = [ControlProfileOnly & MFAVerified]
+    def get(self, request):
+        return Response(export_hl7(request.query_params), status=status.HTTP_200_OK)
