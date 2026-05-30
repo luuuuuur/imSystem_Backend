@@ -44,7 +44,7 @@ SYSTEM_CATEGORIA = "https://956.duckdns.org/fhir/CodeSystem/CategoriaAtencion"
 SYSTEM_CRONOEV   = "https://956.duckdns.org/fhir/CodeSystem/EventoCronologia"    
 
 STATUS_MAP = {
-    "Firmado":   "completed",
+    "Firmado":   "finished",
     "Pendiente": "in-progress",
 }
 UCUM_MAP = {
@@ -55,16 +55,14 @@ UCUM_MAP = {
 }
 
 VITAL_LOINC = {
-    "presion_sistolica":   ("8480-6",  "Systolic blood pressure",          "mm[Hg]"),
-    "presion_diastolica":  ("8462-4",  "Diastolic blood pressure",         "mm[Hg]"),
     "frecuencia_cardiaca": ("8867-4",  "Heart rate",                       "/min"),
-    "saturacion_oxigeno":  ("59408-5", "Oxygen saturation (pulse ox)",     "%"),
+    "saturacion_oxigeno":  ("2708-6",  "Oxygen saturation in Arterial blood by Pulse oximetry", "%"),
     "temperatura":         ("8310-5",  "Body temperature",                 "Cel"),
     "fr":                  ("9279-1",  "Respiratory rate",                 "/min"),
     "fio2":                ("3150-0",  "Inhaled oxygen concentration",     "%"),
     "hgt":                 ("2339-0",  "Glucose [Mass/volume] in Blood",   "mg/dL"),
     "gcs":                 ("9269-2",  "Glasgow coma score total",         "{score}"),
-    "eva":                 ("72514-3", "Pain severity 0-10 numeric rating", "{score}"),
+    "eva":                 ("72514-3", "Pain severity - 0-10 verbal numeric rating [Score] - Reported", "{score}"),
 }
 
 CRONO_EVENTS = {
@@ -244,6 +242,34 @@ def export_hl7(atencion_id):
             effective_iso = f"{fecha_base.isoformat()}T{h}:00Z"
         else:
             effective_iso = _to_iso(sv.timestamp)
+        if sv.presion_sistolica is not None and sv.presion_diastolica is not None:
+            bp_uuid = f"urn:uuid:{uuid.uuid4()}"
+            bp_obs = Observation(
+                status="final",
+                category=[CodeableConcept(coding=[Coding(
+                    system=OBS_CAT, code="vital-signs", display="Vital Signs"
+                )])],
+                code=CodeableConcept(coding=[Coding(
+                    system=LOINC, code="85354-9", display="Blood pressure panel with all children optional"
+                )]),
+                subject=Reference(reference=patient_uuid),
+                encounter=Reference(reference=encounter_uuid),
+                effectiveDateTime=effective_iso,
+                performer=[Reference(reference=practitioner_uuid)],
+                component=[
+                    {
+                        "code": {"coding": [{"system": LOINC, "code": "8480-6", "display": "Systolic blood pressure"}]},
+                        "valueQuantity": {"value": float(sv.presion_sistolica), "unit": "mm[Hg]", "system": UCUM, "code": "mm[Hg]"},
+                    },
+                    {
+                        "code": {"coding": [{"system": LOINC, "code": "8462-4", "display": "Diastolic blood pressure"}]},
+                        "valueQuantity": {"value": float(sv.presion_diastolica), "unit": "mm[Hg]", "system": UCUM, "code": "mm[Hg]"},
+                    },
+                ],
+            )
+            if sv.observaciones:
+                bp_obs.note = [{"text": sv.observaciones}]
+            entries.append(_entry(bp_uuid, bp_obs, "Observation"))
         for field, (code, display, unit) in VITAL_LOINC.items():
             value = getattr(sv, field, None)
             if value is None:
