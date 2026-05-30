@@ -261,10 +261,24 @@ def export_hl7(atencion_id):
             entries.append(_entry(obs_uuid, obs, "Observation"))
 
     if crono:
+        fecha_base = atencion.hora_salida.date() if atencion.hora_salida else None
+        
         for field, (code, display) in CRONO_EVENTS.items():
             ts = getattr(crono, field, None)
             if not ts:
                 continue
+            
+            if datetime_type := isinstance(ts, datetime):
+                effective_iso = _to_iso(ts)
+            elif fecha_base and hasattr(ts, 'hour'): 
+                dt_combinado = datetime.combine(fecha_base, ts)
+                effective_iso = _to_iso(dt_combinado)
+            else:
+                effective_iso = f"{fecha_base.isoformat()}T{ts}:00Z" if fecha_base else None
+
+            if not effective_iso:
+                continue
+
             obs_uuid = f"urn:uuid:{uuid.uuid4()}"
             obs = Observation(
                 meta={"profile": [PROFILE_OBSERVATION]},
@@ -277,7 +291,7 @@ def export_hl7(atencion_id):
                 )]),
                 subject=Reference(reference=patient_uuid),
                 encounter=Reference(reference=encounter_uuid),
-                effectiveDateTime=_to_iso(ts),
+                effectiveDateTime=effective_iso,
                 performer=[Reference(reference=practitioner_uuid)],
             )
             entries.append(_entry(obs_uuid, obs, "Observation"))
