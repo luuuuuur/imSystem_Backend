@@ -188,23 +188,40 @@ def export_hl7(atencion_id):
                 "display": "Receptor"
             },
         ))
-
+    
     encounter_kwargs = {
         "meta": {"profile": [PROFILE_ENCOUNTER]},
         "status": STATUS_MAP.get(atencion.estado_sello, "unknown"),
-        "class": Coding(system=ACT_CODE, code="EMER", display="emergency"),
-        "subject": Reference(reference=patient_uuid, display=paciente.nombre_completo),
+        
+        "class": [{
+            "coding": [{
+                "system": ACT_CODE, 
+                "code": "EMER", 
+                "display": "emergency"
+            }]
+        }],
+        "subject": {
+            "reference": patient_uuid, 
+            "display": paciente.nombre_completo
+        },
         "participant": participants,
-        "period": Period(
-            start=atencion.hora_salida.isoformat() if atencion.hora_salida else None,
-            end=atencion.hora_llegada.isoformat() if atencion.hora_llegada else None,
-        ),
-        "reasonCode": [CodeableConcept(text=motivo_txt)],
+        "period": {
+            "start": atencion.hora_salida.isoformat() if atencion.hora_salida else None,
+            "end": atencion.hora_llegada.isoformat() if atencion.hora_llegada else None,
+        },
+        "reasonCode": [
+            {"text": motivo_txt}
+        ],
     }
+
     if crono and crono.categoria:
-        encounter_kwargs["priority"] = CodeableConcept(coding=[Coding(
-            system=SYSTEM_CATEGORIA, code=crono.categoria, display=f"Categoría {crono.categoria}"
-        )])
+        encounter_kwargs["priority"] = {
+            "coding": [{
+                "system": SYSTEM_CATEGORIA, 
+                "code": crono.categoria, 
+                "display": f"Categoría {crono.categoria}"
+            }]
+        }
     encounter = Encounter(**encounter_kwargs)
     entries.append(_entry(encounter_uuid, encounter, "Encounter"))
     for sv in atencion.signos_vitales.all():
