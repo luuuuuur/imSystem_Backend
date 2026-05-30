@@ -616,4 +616,4 @@ class LogsAPI(APIView):
 class FHIR(APIView):
     permission_classes = [ControlProfileOnly & MFAVerified]
     def get(self, request):
-        return Response(export_hl7(request.query_params), status=status.HTTP_200_OK)
+        return Response(export_hl7(request.query_params.get('id')), status=status.HTTP_200_OK)
