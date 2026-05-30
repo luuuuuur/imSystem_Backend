@@ -72,7 +72,12 @@ CRONO_EVENTS = {
     "llegada_qth2":   ("llegada-qth2",   "Llegada al destino (QTH2)"),
     "salida_qth2":    ("salida-qth2",    "Salida desde el destino (QTH2)"),
 }
-
+def _to_iso(val):
+    if not val:
+        return None
+    if isinstance(val, str):
+        return val
+    return val.isoformat()
 
 def _rut_identifier(rut):
     return Identifier(value=rut, system=SYSTEM_RUT)
@@ -133,7 +138,7 @@ def export_hl7(atencion_id):
         meta={"profile": [PROFILE_PATIENT]},
         identifier=[_rut_identifier(paciente.rut)],
         name=[HumanName(text=paciente.nombre_completo)],
-        birthDate=paciente.fecha_nacimiento.isoformat() if paciente.fecha_nacimiento else None,
+        birthDate=_to_iso(paciente.fecha_nacimiento) if paciente.fecha_nacimiento else None,
         address= address_list if address_list else None,
         telecom=(
             [ContactPoint(system="phone", value=telefono_limpio)]
@@ -207,8 +212,8 @@ def export_hl7(atencion_id):
         "participant": participants,
         
         "actualPeriod": {
-            "start": atencion.hora_salida.isoformat() if atencion.hora_salida else None,
-            "end": atencion.hora_llegada.isoformat() if atencion.hora_llegada else None,
+            "start": _to_iso(atencion.hora_salida) if atencion.hora_salida else None,
+            "end": _to_iso(atencion.hora_llegada) if atencion.hora_llegada else None,
         },
         
         "reason": [
@@ -233,7 +238,7 @@ def export_hl7(atencion_id):
     encounter = Encounter(**encounter_kwargs)
     entries.append(_entry(encounter_uuid, encounter, "Encounter"))
     for sv in atencion.signos_vitales.all():
-        effective_iso = sv.timestamp.isoformat()
+        effective_iso = _to_iso(sv.timestamp)
         for field, (code, display, unit) in VITAL_LOINC.items():
             value = getattr(sv, field, None)
             if value is None:
@@ -278,13 +283,13 @@ def export_hl7(atencion_id):
                 )]),
                 subject=Reference(reference=patient_uuid),
                 encounter=Reference(reference=encounter_uuid),
-                effectiveDateTime=ts.isoformat(),
+                effectiveDateTime=_to_iso(ts),
                 performer=[Reference(reference=practitioner_uuid)],
             )
             entries.append(_entry(obs_uuid, obs, "Observation"))
 
-    medeff_start = atencion.hora_salida.isoformat() if atencion.hora_salida else None
-    medeff_end   = atencion.hora_llegada.isoformat() if atencion.hora_llegada else None
+    medeff_start = _to_iso(atencion.hora_salida) if atencion.hora_salida else None
+    medeff_end   = _to_iso(atencion.hora_llegada) if atencion.hora_llegada else None
 
     for detalle in atencion.detalleinsumoatencion_set.all():
         presentacion = detalle.insumo
@@ -321,7 +326,7 @@ def export_hl7(atencion_id):
 
     bundle = Bundle(
         type="transaction",
-        timestamp=datetime.utcnow().isoformat() + "Z",
+        timestamp=_to_iso(datetime.now()) + "Z",
         entry=entries,
     )
 
