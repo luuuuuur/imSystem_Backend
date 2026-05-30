@@ -36,7 +36,7 @@ send.sh
 __pycache__/
 .pytest_cache/
 *.py[cod]
-
+search.py
 # C extensions
 *.so
 # Distribution / packaging
