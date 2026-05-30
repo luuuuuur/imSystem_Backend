@@ -237,7 +237,7 @@ def export_hl7(atencion_id):
             h = str(sv.hora).strip()
             if ":" not in h and len(h) == 4:
                 h = f"{h[:2]}:{h[2:]}"
-                effective_iso = f"{fecha_base.isoformat()}T{h}:00Z"
+            effective_iso = f"{fecha_base.isoformat()}T{h}:00Z"
         else:
             effective_iso = _to_iso(sv.timestamp)
         for field, (code, display, unit) in VITAL_LOINC.items():
