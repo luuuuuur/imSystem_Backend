@@ -298,28 +298,48 @@ def export_hl7(atencion_id):
         med_text = (
             f"{insumo_nombre} {presentacion.cantidad} {unidad}".strip()
         )
-
         med_uuid = f"urn:uuid:{uuid.uuid4()}"
+        
         ma_kwargs = {
             "status": "completed",
-            "medicationCodeableConcept": CodeableConcept(text=med_text),
-            "subject": Reference(reference=patient_uuid, display=paciente.nombre_completo),
-            "context": Reference(reference=encounter_uuid),
-            "performer": [MedicationAdministrationPerformer(
-                actor=Reference(reference=practitioner_uuid, display=practicante.full_name)
-            )],
-            "dosage": MedicationAdministrationDosage(
-                dose=Quantity(
-                    value=float(detalle.cantidad_usada),
-                    unit=unidad or None,
-                ),
-                text=detalle.observaciones or None,
-            ),
+            
+            "medication": {
+                "concept": {"text": med_text}
+            },
+            
+            "subject": {
+                "reference": patient_uuid, 
+                "display": paciente.nombre_completo
+            },
+            
+            "encounter": {
+                "reference": encounter_uuid
+            },
+            
+            "performer": [
+                {
+                    "actor": {
+                        "reference": {
+                            "reference": practitioner_uuid, 
+                            "display": practicante.full_name
+                        }
+                    }
+                }
+            ],
+            
+            "dosage": {
+                "dose": {
+                    "value": float(detalle.cantidad_usada),
+                    "unit": unidad or None,
+                },
+                "text": detalle.observaciones or None,
+            },
         }
+
         if medeff_start and medeff_end:
-            ma_kwargs["effectivePeriod"] = Period(start=medeff_start, end=medeff_end)
+            ma_kwargs["occurrencePeriod"] = {"start": medeff_start, "end": medeff_end}
         elif medeff_start:
-            ma_kwargs["effectiveDateTime"] = medeff_start
+            ma_kwargs["occurrenceDateTime"] = medeff_start
 
         med_admin = MedicationAdministration(**ma_kwargs)
         entries.append(_entry(med_uuid, med_admin, "MedicationAdministration"))
