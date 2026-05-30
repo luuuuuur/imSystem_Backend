@@ -56,7 +56,7 @@ UCUM_MAP = {
 
 VITAL_LOINC = {
     "frecuencia_cardiaca": ("8867-4",  "Heart rate",                       "/min"),
-    "saturacion_oxigeno":  ("2708-6",  "Oxygen saturation in Arterial blood by Pulse oximetry", "%"),
+    "saturacion_oxigeno": ("2708-6", "Oxygen saturation in Arterial blood", "%"),
     "temperatura":         ("8310-5",  "Body temperature",                 "Cel"),
     "fr":                  ("9279-1",  "Respiratory rate",                 "/min"),
     "fio2":                ("3150-0",  "Inhaled oxygen concentration",     "%"),
