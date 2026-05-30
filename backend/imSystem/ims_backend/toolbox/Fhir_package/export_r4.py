@@ -268,13 +268,17 @@ def export_hl7(atencion_id):
             if not ts:
                 continue
             
-            if datetime_type := isinstance(ts, datetime):
+            if isinstance(ts, datetime):
                 effective_iso = _to_iso(ts)
             elif fecha_base and hasattr(ts, 'hour'): 
                 dt_combinado = datetime.combine(fecha_base, ts)
                 effective_iso = _to_iso(dt_combinado)
             else:
-                effective_iso = f"{fecha_base.isoformat()}T{ts}:00Z" if fecha_base else None
+                ts_str = str(ts).strip()
+                if ":" not in ts_str and len(ts_str) == 4:
+                    ts_str = f"{ts_str[:2]}:{ts_str[2:]}"
+                
+                effective_iso = f"{fecha_base.isoformat()}T{ts_str}:00Z" if fecha_base else None
 
             if not effective_iso:
                 continue
