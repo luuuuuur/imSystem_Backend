@@ -3,30 +3,30 @@ from datetime import datetime
 
 from django.db.models import Prefetch
 
-from fhir.resources.address import Address
-from fhir.resources.bundle import Bundle, BundleEntry, BundleEntryRequest
-from fhir.resources.codeableconcept import CodeableConcept
-from fhir.resources.coding import Coding
-from fhir.resources.contactpoint import ContactPoint
-from fhir.resources.encounter import Encounter, EncounterParticipant
-from fhir.resources.humanname import HumanName
-from fhir.resources.identifier import Identifier
-from fhir.resources.medicationadministration import (
+# CAMBIO: Todos los imports ahora usan el módulo R4B
+from fhir.resources.R4B.address import Address
+from fhir.resources.R4B.bundle import Bundle, BundleEntry, BundleEntryRequest
+from fhir.resources.R4B.codeableconcept import CodeableConcept
+from fhir.resources.R4B.coding import Coding
+from fhir.resources.R4B.contactpoint import ContactPoint
+from fhir.resources.R4B.encounter import Encounter, EncounterParticipant
+from fhir.resources.R4B.humanname import HumanName
+from fhir.resources.R4B.identifier import Identifier
+from fhir.resources.R4B.medicationadministration import (
     MedicationAdministration,
     MedicationAdministrationDosage,
     MedicationAdministrationPerformer,
 )
-from fhir.resources.observation import Observation
-from fhir.resources.patient import Patient
-from fhir.resources.period import Period
-from fhir.resources.practitioner import Practitioner, PractitionerQualification
-from fhir.resources.quantity import Quantity
-from fhir.resources.reference import Reference
+from fhir.resources.R4B.observation import Observation
+from fhir.resources.R4B.patient import Patient
+from fhir.resources.R4B.period import Period
+from fhir.resources.R4B.practitioner import Practitioner, PractitionerQualification
+from fhir.resources.R4B.quantity import Quantity
+from fhir.resources.R4B.reference import Reference
 
 from ims_backend.models import Atencion, DetalleInsumoAtencion
 
 
-# ---------- Sistemas / perfiles ----------
 SYSTEM_RUT = "https://hl7chile.cl/fhir/ig/clcore/CodeSystem/CSIdentificadores"
 LOINC      = "http://loinc.org"
 UCUM       = "http://unitsofmeasure.org"
@@ -40,16 +40,15 @@ PROFILE_PRACTITIONER = f"{CL}/CorePrestadorCl"
 PROFILE_ENCOUNTER    = f"{CL}/EncounterCL"
 PROFILE_OBSERVATION  = f"{CL}/CoreObservacionCL"
 
-# Sistemas locales del proyecto
-SYSTEM_CATEGORIA = "https://956.duckdns.org/fhir/CodeSystem/CategoriaAtencion"   # C1..C5
-SYSTEM_CRONOEV   = "https://956.duckdns.org/fhir/CodeSystem/EventoCronologia"    # qth1, qth2, etc.
+SYSTEM_CATEGORIA = "https://956.duckdns.org/fhir/CodeSystem/CategoriaAtencion"   
+SYSTEM_CRONOEV   = "https://956.duckdns.org/fhir/CodeSystem/EventoCronologia"    
 
 STATUS_MAP = {
     "Firmado":   "completed",
     "Pendiente": "in-progress",
 }
 
-# (campo SignosVitales) -> (LOINC code, display, UCUM unit)
+
 VITAL_LOINC = {
     "presion_sistolica":   ("8480-6",  "Systolic blood pressure",          "mm[Hg]"),
     "presion_diastolica":  ("8462-4",  "Diastolic blood pressure",         "mm[Hg]"),
@@ -63,7 +62,6 @@ VITAL_LOINC = {
     "eva":                 ("72514-3", "Pain severity 0-10 numeric rating", "{score}"),
 }
 
-# (campo Cronologia) -> (code, display)
 CRONO_EVENTS = {
     "hora_llamada":   ("hora-llamada",   "Hora de la llamada al servicio"),
     "despacho_movil": ("despacho-movil", "Despacho del móvil"),
@@ -72,6 +70,7 @@ CRONO_EVENTS = {
     "llegada_qth2":   ("llegada-qth2",   "Llegada al destino (QTH2)"),
     "salida_qth2":    ("salida-qth2",    "Salida desde el destino (QTH2)"),
 }
+
 def _to_iso(val):
     if not val:
         return None
@@ -81,7 +80,6 @@ def _to_iso(val):
 
 def _rut_identifier(rut):
     return Identifier(value=rut, system=SYSTEM_RUT)
-
 
 def _entry(full_url, resource, resource_type):
     return BundleEntry(
@@ -146,6 +144,7 @@ def export_hl7(atencion_id):
         ),
     )
     entries.append(_entry(patient_uuid, patient, "Patient"))
+    
     qualifications = []
     if practicante.rol:
         qualifications.append(PractitionerQualification(
@@ -158,6 +157,7 @@ def export_hl7(atencion_id):
         qualification=qualifications or None,
     )
     entries.append(_entry(practitioner_uuid, practitioner, "Practitioner"))
+    
     if receiver_uuid:
         receiver = Practitioner(
             meta={"profile": [PROFILE_PRACTITIONER]},
@@ -198,31 +198,25 @@ def export_hl7(atencion_id):
         "meta": {"profile": [PROFILE_ENCOUNTER]},
         "status": STATUS_MAP.get(atencion.estado_sello, "unknown"),
         
-        "class": [{
-            "coding": [{
-                "system": ACT_CODE, 
-                "code": "EMER", 
-                "display": "emergency"
-            }]
-        }],
+        "class_fhir": {
+            "system": ACT_CODE, 
+            "code": "EMER", 
+            "display": "emergency"
+        },
         "subject": {
             "reference": patient_uuid, 
             "display": paciente.nombre_completo
         },
         "participant": participants,
         
-        "actualPeriod": {
+        "period": {
             "start": _to_iso(atencion.hora_salida) if atencion.hora_salida else None,
             "end": _to_iso(atencion.hora_llegada) if atencion.hora_llegada else None,
         },
         
-        "reason": [
+        "reasonCode": [
             {
-                "value": [
-                    {
-                        "concept": {"text": motivo_txt}
-                    }
-                ]
+                "text": motivo_txt
             }
         ],
     }
@@ -237,6 +231,7 @@ def export_hl7(atencion_id):
         }
     encounter = Encounter(**encounter_kwargs)
     entries.append(_entry(encounter_uuid, encounter, "Encounter"))
+    
     for sv in atencion.signos_vitales.all():
         effective_iso = _to_iso(sv.timestamp)
         for field, (code, display, unit) in VITAL_LOINC.items():
@@ -265,7 +260,6 @@ def export_hl7(atencion_id):
                 obs.note = [{"text": sv.observaciones}]
             entries.append(_entry(obs_uuid, obs, "Observation"))
 
-    # ---------- Observations: cronología (un Observation por evento) ----------
     if crono:
         for field, (code, display) in CRONO_EVENTS.items():
             ts = getattr(crono, field, None)
@@ -295,16 +289,14 @@ def export_hl7(atencion_id):
         presentacion = detalle.insumo
         insumo_nombre = presentacion.insumo.nombre_insumo
         unidad = presentacion.unidad_medida.unit if presentacion.unidad_medida else ""
-        med_text = (
-            f"{insumo_nombre} {presentacion.cantidad} {unidad}".strip()
-        )
+        med_text = f"{insumo_nombre} {presentacion.cantidad} {unidad}".strip()
         med_uuid = f"urn:uuid:{uuid.uuid4()}"
         
         ma_kwargs = {
             "status": "completed",
             
-            "medication": {
-                "concept": {"text": med_text}
+            "medicationCodeableConcept": {
+                "text": med_text
             },
             
             "subject": {
@@ -312,17 +304,15 @@ def export_hl7(atencion_id):
                 "display": paciente.nombre_completo
             },
             
-            "encounter": {
+            "context": {
                 "reference": encounter_uuid
             },
             
             "performer": [
                 {
                     "actor": {
-                        "reference": {
-                            "reference": practitioner_uuid, 
-                            "display": practicante.full_name
-                        }
+                        "reference": practitioner_uuid, 
+                        "display": practicante.full_name
                     }
                 }
             ],
@@ -337,9 +327,9 @@ def export_hl7(atencion_id):
         }
 
         if medeff_start and medeff_end:
-            ma_kwargs["occurencePeriod"] = {"start": medeff_start, "end": medeff_end}
+            ma_kwargs["effectivePeriod"] = {"start": medeff_start, "end": medeff_end}
         elif medeff_start:
-            ma_kwargs["occurenceDateTime"] = medeff_start
+            ma_kwargs["effectiveDateTime"] = medeff_start
 
         med_admin = MedicationAdministration(**ma_kwargs)
         entries.append(_entry(med_uuid, med_admin, "MedicationAdministration"))
