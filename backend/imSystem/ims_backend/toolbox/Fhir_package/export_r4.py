@@ -118,15 +118,25 @@ def export_hl7(atencion_id):
     encounter_uuid    = f"urn:uuid:{uuid.uuid4()}"
 
     entries = []
+    direccion_limpia = paciente.direccion.strip() if paciente.direccion else None
+    comuna_limpia = paciente.comuna.strip() if paciente.comuna else None
+    
+    address_list = []
+    if direccion_limpia or comuna_limpia:
+        address_list.append(Address(
+            text=direccion_limpia, 
+            city=comuna_limpia
+        ))
 
+    telefono_limpio = paciente.telefono.strip() if paciente.telefono else None  
     patient = Patient(
         meta={"profile": [PROFILE_PATIENT]},
         identifier=[_rut_identifier(paciente.rut)],
         name=[HumanName(text=paciente.nombre_completo)],
         birthDate=paciente.fecha_nacimiento.isoformat() if paciente.fecha_nacimiento else None,
-        address=[Address(text=paciente.direccion, city=paciente.comuna)],
+        address= address_list if address_list else None,
         telecom=(
-            [ContactPoint(system="phone", value=paciente.telefono)]
+            [ContactPoint(system="phone", value=telefono_limpio)]
             if paciente.telefono else None
         ),
     )
