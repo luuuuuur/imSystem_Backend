@@ -47,7 +47,12 @@ STATUS_MAP = {
     "Firmado":   "completed",
     "Pendiente": "in-progress",
 }
-
+UCUM_MAP = {
+    "MG": "mg",
+    "ML": "mL",
+    "UNIDAD": "{unidad}",
+    "comprimido": "{comprimido}",
+}
 
 VITAL_LOINC = {
     "presion_sistolica":   ("8480-6",  "Systolic blood pressure",          "mm[Hg]"),
@@ -305,43 +310,40 @@ def export_hl7(atencion_id):
 
     medeff_start = _to_iso(atencion.hora_salida) if atencion.hora_salida else None
     medeff_end   = _to_iso(atencion.hora_llegada) if atencion.hora_llegada else None
-
     for detalle in atencion.detalleinsumoatencion_set.all():
         presentacion = detalle.insumo
         insumo_nombre = presentacion.insumo.nombre_insumo
-        unidad = presentacion.unidad_medida.unit if presentacion.unidad_medida else ""
-        med_text = f"{insumo_nombre} {presentacion.cantidad} {unidad}".strip()
+        unidad_raw = presentacion.unidad_medida.unit if presentacion.unidad_medida else None
+        unidad_ucum = UCUM_MAP.get(unidad_raw, f"{{{unidad_raw}}}" if unidad_raw else None)
+        med_text = f"{insumo_nombre} {presentacion.cantidad} {unidad_raw or ''}".strip()
         med_uuid = f"urn:uuid:{uuid.uuid4()}"
-        
+
         ma_kwargs = {
             "status": "completed",
-            
             "medicationCodeableConcept": {
                 "text": med_text
             },
-            
             "subject": {
-                "reference": patient_uuid, 
+                "reference": patient_uuid,
                 "display": paciente.nombre_completo
             },
-            
             "context": {
                 "reference": encounter_uuid
             },
-            
             "performer": [
                 {
                     "actor": {
-                        "reference": practitioner_uuid, 
+                        "reference": practitioner_uuid,
                         "display": practicante.full_name
                     }
                 }
             ],
-            
             "dosage": {
                 "dose": {
                     "value": float(detalle.cantidad_usada) * float(presentacion.cantidad),
-                    "unit": unidad or None,
+                    "unit": unidad_ucum,
+                    "system": UCUM,
+                    "code": unidad_ucum,
                 },
                 "text": detalle.observaciones or None,
             },
