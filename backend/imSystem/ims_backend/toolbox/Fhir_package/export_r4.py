@@ -231,9 +231,15 @@ def export_hl7(atencion_id):
         }
     encounter = Encounter(**encounter_kwargs)
     entries.append(_entry(encounter_uuid, encounter, "Encounter"))
-    
+    fecha_base = atencion.hora_salida.date() if atencion.hora_salida else None
     for sv in atencion.signos_vitales.all():
-        effective_iso = _to_iso(sv.timestamp)
+        if sv.hora and fecha_base:
+            h = str(sv.hora).strip()
+            if ":" not in h and len(h) == 4:
+                h = f"{h[:2]}:{h[2:]}"
+                effective_iso = f"{fecha_base.isoformat()}T{h}:00Z"
+        else:
+            effective_iso = _to_iso(sv.timestamp)
         for field, (code, display, unit) in VITAL_LOINC.items():
             value = getattr(sv, field, None)
             if value is None:
@@ -261,8 +267,6 @@ def export_hl7(atencion_id):
             entries.append(_entry(obs_uuid, obs, "Observation"))
 
     if crono:
-        fecha_base = atencion.hora_salida.date() if atencion.hora_salida else None
-        
         for field, (code, display) in CRONO_EVENTS.items():
             ts = getattr(crono, field, None)
             if not ts:
