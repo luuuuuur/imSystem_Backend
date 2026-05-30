@@ -32,7 +32,7 @@ def add_atencion(request):
                     ambulancia=ambulancia, despacho=despacho,
                     hora_salida=despacho_data['hora_salida'],
                     hora_llegada=despacho_data['hora_llegada'],
-                    rut_registrador=request.user.rut, rut_receptor=valid_data["rut_receptor"]
+                    rut_registrador=request.user, rut_receptor=valid_data["rut_receptor"]
                 )
 
                 SignosVitales.objects.bulk_create([SignosVitales(atencion=atencion, **sv) for sv in svd])
