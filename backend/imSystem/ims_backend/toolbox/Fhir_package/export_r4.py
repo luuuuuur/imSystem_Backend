@@ -176,7 +176,7 @@ def export_hl7(atencion_id):
             type=[CodeableConcept(coding=[Coding(
                 system=PART_TYPE, code="ATND", display="attender"
             )])],
-            actor={
+            individual={
                 "reference": practitioner_uuid, 
                 "display": practicante.full_name
             },
@@ -188,7 +188,7 @@ def export_hl7(atencion_id):
             type=[CodeableConcept(coding=[Coding(
                 system=PART_TYPE, code="REF", display="referrer"
             )])],
-            actor={
+            individual={
                 "reference": receiver_uuid, 
                 "display": "Receptor"
             },
