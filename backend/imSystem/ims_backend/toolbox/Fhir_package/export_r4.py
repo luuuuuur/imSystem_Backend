@@ -337,9 +337,9 @@ def export_hl7(atencion_id):
         }
 
         if medeff_start and medeff_end:
-            ma_kwargs["occurrencePeriod"] = {"start": medeff_start, "end": medeff_end}
+            ma_kwargs["occurencePeriod"] = {"start": medeff_start, "end": medeff_end}
         elif medeff_start:
-            ma_kwargs["occurrenceDateTime"] = medeff_start
+            ma_kwargs["occurenceDateTime"] = medeff_start
 
         med_admin = MedicationAdministration(**ma_kwargs)
         entries.append(_entry(med_uuid, med_admin, "MedicationAdministration"))
