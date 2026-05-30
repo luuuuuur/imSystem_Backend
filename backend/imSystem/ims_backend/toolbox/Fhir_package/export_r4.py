@@ -160,7 +160,6 @@ def export_hl7(atencion_id):
     
     if receiver_uuid:
         receiver = Practitioner(
-            meta={"profile": [PROFILE_PRACTITIONER]},
             identifier=[_rut_identifier(atencion.rut_receptor)],
         )
         entries.append(_entry(receiver_uuid, receiver, "Practitioner"))
@@ -256,7 +255,7 @@ def export_hl7(atencion_id):
                 )]),
                 subject=Reference(reference=patient_uuid),
                 encounter=Reference(reference=encounter_uuid),
-                effectiveDateTime=effective_iso,
+                effectiveDateTime=effective_iso,    
                 performer=[Reference(reference=practitioner_uuid)],
                 valueQuantity=Quantity(
                     value=float(value), unit=unit, system=UCUM, code=unit
