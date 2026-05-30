@@ -205,12 +205,20 @@ def export_hl7(atencion_id):
             "display": paciente.nombre_completo
         },
         "participant": participants,
-        "period": {
+        
+        "actualPeriod": {
             "start": atencion.hora_salida.isoformat() if atencion.hora_salida else None,
             "end": atencion.hora_llegada.isoformat() if atencion.hora_llegada else None,
         },
-        "reasonCode": [
-            {"text": motivo_txt}
+        
+        "reason": [
+            {
+                "value": [
+                    {
+                        "concept": {"text": motivo_txt}
+                    }
+                ]
+            }
         ],
     }
 
