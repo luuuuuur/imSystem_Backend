@@ -341,7 +341,7 @@ def export_hl7(atencion_id):
             
             "dosage": {
                 "dose": {
-                    "value": float(detalle.cantidad_usada),
+                    "value": float(detalle.cantidad_usada) * float(presentacion.cantidad),
                     "unit": unidad or None,
                 },
                 "text": detalle.observaciones or None,
