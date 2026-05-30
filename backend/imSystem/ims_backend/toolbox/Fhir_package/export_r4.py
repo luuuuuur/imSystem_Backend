@@ -171,21 +171,27 @@ def export_hl7(atencion_id):
             type=[CodeableConcept(coding=[Coding(
                 system=PART_TYPE, code="ATND", display="attender"
             )])],
-            individual=Reference(reference=practitioner_uuid, display=practicante.full_name),
+            individual={
+                "reference": practitioner_uuid, 
+                "display": practicante.full_name
+            },
         )
     ]
+    
     if receiver_uuid:
         participants.append(EncounterParticipant(
             type=[CodeableConcept(coding=[Coding(
                 system=PART_TYPE, code="REF", display="referrer"
             )])],
-            individual=Reference(reference=receiver_uuid, display="Receptor"),
+            individual={
+                "reference": receiver_uuid, 
+                "display": "Receptor"
+            },
         ))
 
     encounter_kwargs = {
         "meta": {"profile": [PROFILE_ENCOUNTER]},
         "status": STATUS_MAP.get(atencion.estado_sello, "unknown"),
-        # 'class' es obligatorio en R4; se pasa por alias.
         "class": Coding(system=ACT_CODE, code="EMER", display="emergency"),
         "subject": Reference(reference=patient_uuid, display=paciente.nombre_completo),
         "participant": participants,
