@@ -34,7 +34,7 @@ def add_atencion(request):
                     hora_llegada=despacho_data['hora_llegada'],
                     rut_registrador=request.user.rut, rut_receptor=valid_data["rut_receptor"]
                 )
-                
+
                 SignosVitales.objects.bulk_create([SignosVitales(atencion=atencion, **sv) for sv in svd])
                 pre = PreInforme.objects.create(
                     atencion=atencion,
@@ -108,7 +108,7 @@ def add_atencion(request):
                 despacho.save(update_fields=["estado"])
                 transaction.on_commit(lambda:agregar_log_atencion.delay(documento=document))
         except ValueError as ve:
-            raise exceptions.BadRequest(detail=str(ve))
+            raise exceptions.BadRequestException(detail=str(ve))
         except Exception as e:
             raise exceptions.InternalServerException(detail=str(e))
         try:
