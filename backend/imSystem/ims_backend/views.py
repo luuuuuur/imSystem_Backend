@@ -616,4 +616,8 @@ class LogsAPI(APIView):
 class FHIR(APIView):
     permission_classes = [ControlProfileOnly & MFAVerified]
     def get(self, request):
-        return Response(export_hl7(request.query_params.get('id')), status=status.HTTP_200_OK)
+        try:
+            data  = export_hl7(request.query_params.get('id'))
+            return Response(data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
