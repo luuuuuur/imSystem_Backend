@@ -1,15 +1,4 @@
-#-----AWS SECRETS MANAGER SECTION------
-import boto3
-import json
-class Secrets:
-    client = boto3.client('secretsmanager', region_name='us-east-1')
-    @classmethod
-    def generate_secrets(cls):
-        response = cls.client.get_secret_value(SecretId='TEST_AWS_SECRETS_MANAGER')
-        return json.loads(response['SecretString'])
-secrets = Secrets.generate_secrets()
-#-----END AWS MANAGER SECTION---------
-
+from ims_backend.aws_package.secrets_manager import secrets_aws
 
 
 #---BACKEND SETTINGS
@@ -23,8 +12,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = secrets["SECRET_KEY"]
-AWS_BUCKET_NAME=secrets["AWS_BUCKET_NAME"]
+SECRET_KEY = secrets_aws["SECRET_KEY"]
+AWS_BUCKET_NAME=secrets_aws["AWS_BUCKET_NAME"]
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
@@ -100,11 +89,11 @@ CSRF_TRUSTED_ORIGINS = [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': secrets["DB_NAME"],
-        'USER': secrets["DB_USER"],
-        'PASSWORD': secrets["DB_PASSWORD"],
-        'HOST': secrets["DB_HOST"],
-        'PORT': secrets["DB_PORT"],
+        'NAME': secrets_aws["DB_NAME"],
+        'USER': secrets_aws["DB_USER"],
+        'PASSWORD': secrets_aws["DB_PASSWORD"],
+        'HOST': secrets_aws["DB_HOST"],
+        'PORT': secrets_aws["DB_PORT"],
     }
 }
 
