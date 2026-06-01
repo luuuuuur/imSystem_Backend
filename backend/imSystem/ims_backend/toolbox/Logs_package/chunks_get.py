@@ -1,4 +1,4 @@
-from ims_backend.models import LogAuditoria
+from backend.imSystem.ims_backend.models import LogAuditoria
 from django.http import StreamingHttpResponse
 import json
 def get_by_chunks()->StreamingHttpResponse:

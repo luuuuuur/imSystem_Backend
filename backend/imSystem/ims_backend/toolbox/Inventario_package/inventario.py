@@ -1,4 +1,4 @@
-from ims_backend.models import *
+from backend.imSystem.ims_backend.models import *
 from django.shortcuts import get_object_or_404
 from ims_backend.serializers import InsumoIdSerializer
 from ims_backend.toolbox import exceptions

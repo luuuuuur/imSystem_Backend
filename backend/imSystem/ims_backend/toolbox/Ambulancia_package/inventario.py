@@ -1,4 +1,4 @@
-from ims_backend.models import *
+from backend.imSystem.ims_backend.models import *
 from ims_backend.toolbox import exceptions
 def specific(valid_data):
     try:

@@ -24,7 +24,7 @@ from fhir.resources.R4B.practitioner import Practitioner, PractitionerQualificat
 from fhir.resources.R4B.quantity import Quantity
 from fhir.resources.R4B.reference import Reference
 
-from ims_backend.models import Atencion, DetalleInsumoAtencion
+from backend.imSystem.ims_backend.models import Atencion, DetalleInsumoAtencion
 
 
 SYSTEM_RUT = "https://hl7chile.cl/fhir/ig/clcore/CodeSystem/CSIdentificadores"

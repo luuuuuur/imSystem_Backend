@@ -1,5 +1,5 @@
 from django.db.models import F
-from ims_backend.models import StockInsumo
+from backend.imSystem.ims_backend.models import StockInsumo
 from ims_backend.serializers import MoveItemSerializer
 from django.shortcuts import get_object_or_404
 from django.db import transaction

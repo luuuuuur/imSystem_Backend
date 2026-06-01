@@ -1,4 +1,4 @@
-from ims_backend.models import SuscritosAGrupo,DespachoPersonal
+from backend.imSystem.ims_backend.models import SuscritosAGrupo,DespachoPersonal
 from ims_backend.toolbox.exceptions import NotFoundException, InternalServerException
 def solicitud_usuario(request):
         try:
