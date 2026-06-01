@@ -1,4 +1,4 @@
-from backend.imSystem.ims_backend.models import LogAuditoria
+from ims_backend.models import LogAuditoria
 from celery import shared_task
 
 

@@ -1,5 +1,5 @@
 from celery import shared_task
-from backend.imSystem.ims_backend.models import LogAuditoria, Personal
+from ims_backend.models import LogAuditoria, Personal
 
 
 @shared_task
