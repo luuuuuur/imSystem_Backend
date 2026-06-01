@@ -60,7 +60,7 @@ from ims_backend.toolbox.Fhir_package.export_r4 import export_hl7
 # Permiso custom: restringe acceso a usuarios con rol control
 # Usar en vistas donde solo personal de control debe operar (como por ejemplo asignar trabajores, despachos etc)
 from ims_backend.auth_package.permissions import (ControlProfileOnly,
-                                                  NurseProfileOnly, MedicProfileOnly, MFAVerified)
+                                                  NurseProfileOnly, MedicProfileOnly, MFAVerified, DriverProfileOnly)
 
 # =============================================================================
 # UTILIDADES
@@ -105,19 +105,26 @@ class Login(EnsureCsrfMixin, APIView):
                             login(request,user)
                             request.session.save()
                             request.session['mfa_verified'] = True
-                            return Response({'success':'success', 'sessionid':request.session.session_key,'role': user.rol.nombre_rol}, status=status.HTTP_200_OK)
+                            r = {
+                                "session": request.session.session_key,
+                                "user_data":{
+                                    "role":user.rol.nombre_rol,
+                                    "first_name":user.first_name,
+                                    "last_name":user.last_name
+                                }
+                            }
+                            return Response(r, status=status.HTTP_200_OK)
                 else: 
                     return Response({"error":'TOTP failed'}, status=status.HTTP_401_UNAUTHORIZED)
             except ValueError:
-                return Response({'error':'wrong values check again'}, status=status.HTTP_401_UNAUTHORIZED)
+                return Response({'error':'Credenciales incorrectas o el código de 2 pasos ha vencido antes de ser validado, reintenta con más tiempo'}, status=status.HTTP_401_UNAUTHORIZED)
             except Exception as e:
                     return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# ─── TODO ─────────────────────────────────────────────────────────────────────
-#TODO: Creacion de la api para cargar y actualizar datos del inventario
+#ADMINISTRACION----------------------
 
 # #API para obtener TODOS los insumos
 class GetInsumosAPI(APIView):
@@ -154,10 +161,7 @@ class MoveInsumoAPI(APIView):
 # API para OBTENER las ambulancias
 class AmbulanciaAPI(APIView):
     http_method_names = ['get']
-    def get_permissions(self):
-        if self.request.method == 'GET':
-            return [IsAuthenticated()]
-        return [ControlProfileOnly()]
+    permission_classes = [(ControlProfileOnly | MedicProfileOnly | NurseProfileOnly) & MFAVerified]
 
     def get(self, request):
         if request.query_params:
@@ -167,21 +171,21 @@ class AmbulanciaAPI(APIView):
             r = gets_ambulancia.get_all()
             return Response(r, status=status.HTTP_200_OK)
 
-# API para OPERAR datos del personal
-class DataPersonal(APIView):
-    http_method_names = ['get','post']
-    permission_classes = [MFAVerified & ControlProfileOnly]
+# API para obtener los datos del personal
+class GetPersonal(APIView):
+    htpp_method_names = ['get']
+    permission_classes = [MFAVerified & (MedicProfileOnly | NurseProfileOnly | DriverProfileOnly | ControlProfileOnly)]
     def get(self, request):
         personal_activo = Personal.objects.filter(is_active=True).select_related('rol')
-        
-
         serializer = PersonalSerializer(personal_activo, many=True)
-
         return Response(serializer.data, status=status.HTTP_200_OK)
+#APi para OPERAR datos del personal
+class DataPersonal(APIView):
+    http_method_names = ['post']
+    permission_classes = [MFAVerified & ControlProfileOnly]
     #Agregar un trabajador
     def post(self, request):
         serializer = PersonalSerializer(data=request.data)
-
         if serializer.is_valid():
             try:
 
@@ -228,15 +232,12 @@ class DataPersonal(APIView):
 
 
 # ─── TODO ─────────────────────────────────────────────────────────────────────
-#TODO: Creacion de la validación del TOTP (MFA)
-#TODO: Creación de la API de notificaciones -> SSE
-#TODO: Creación de la API para carga de documentos y descarga de documentos (SOLO lectura, generar un QR desde HASH) -> prioridad
-
+# #TODO: Creación de la API de notificaciones -> SSE
 
 # API para REGISTRAR las atenciones post-despacho y subir los documentos firmados al S3
 class RegistroAtencionAPI(APIView):
     http_method_names = ['post']
-    permission_classes = [NurseProfileOnly | MedicProfileOnly]
+    permission_classes = [(NurseProfileOnly | MedicProfileOnly) & MFAVerified]
     def post(self,request):
         result = add_atencion(request)
         return Response(result, status=status.HTTP_201_CREATED)
@@ -393,10 +394,7 @@ class AddMemberToGroup(APIView):
 # API para el registro de los pacientes
 class RegistrosPacientesAPI(APIView):
     http_method_names = ['get','post']
-    def get_permissions(self):
-        if self.request.method == 'GET':
-            return[IsAuthenticated()]
-        return [ControlProfileOnly()]
+    permission_classes = [MFAVerified & ControlProfileOnly]
 
     def post(self, request):
         serializer = PacienteSerializer(data=request.data)
@@ -444,13 +442,10 @@ class RegistrosPacientesAPI(APIView):
             return Response(list(pacientes), status=status.HTTP_200_OK)
 
 
-# ─── TODO ─────────────────────────────────────────────────────────────────────
-#TODO: Creación de la API para los estados de los usuarios (en turno, disponible, fuera de servicio)
-#TODO: Creación de la API para la gestión de los datos de los pacientes(para cargar al documento)
 # API para CREAR los despachos
 class CreateDespacho(APIView):
     http_method_names = ['post']
-    permission_classes = [ControlProfileOnly]
+    permission_classes = [ControlProfileOnly & MFAVerified]
     def post(self, request):
         serializer = CreateDespachoSerializer(data=request.data)
         if serializer.is_valid():
@@ -490,7 +485,7 @@ class CreateDespacho(APIView):
 # API para asignar los despachos a un grupo previamente creado y existente
 class AsignarDespacho(APIView):
     http_method_names = ['patch']
-    permission_classes = [ControlProfileOnly]
+    permission_classes = [ControlProfileOnly & MFAVerified]
     def patch(self, request):
         serializer = AsignarDespachoSerializer(data=request.data)
         if serializer.is_valid():
@@ -537,26 +532,15 @@ class AsignarDespacho(APIView):
 # API para obtener TODOS Los despachos sin necesidad de incluir al usuario per se
 class AllDespachos(APIView):
     http_method_names = ['get']
-    permission_classes = [IsAuthenticated]
+    permission_classes = [MFAVerified]
     def get(self, request):
         r = all_despachos(request)
         return Response(r, status=status.HTTP_200_OK)
 
-
-# ─── TODO ─────────────────────────────────────────────────────────────────────
-#TODO: Creacion de la API de logs para Auditorías -> para debatir
-#TODO: Creación de la API de exportación de las atenciones en formatio FHIR HL7
-#TODO: Creación de la API de tickets para recuperación de credenciales
-
-
 # API para retornar el despacho asignado al USUARIO LOGEADO AL MOMENTO DE HACER LA SOLICITUD, diferenciar de arriba que retorna todos los despachos
 class DespachoASolicitudUsuario(APIView):
     http_method_names = ['get']
-    def get_permissions(self):
-        if self.request.method == 'GET':
-            return [IsAuthenticated()]
-        return[ControlProfileOnly()]
-
+    permission_classes = [MFAVerified]
     def get(self, request):
         r = solicitud_usuario(request)
         return Response(r, status=status.HTTP_200_OK)
@@ -565,7 +549,7 @@ class DespachoASolicitudUsuario(APIView):
 
 # API para retornar las atenciones, recibe parámetros a través de URL
 class RetornarAtencionAPI(APIView):
-    permission_classes=[IsAuthenticated]
+    permission_classes=[MFAVerified]
     http_method_names = ['get']
     def get(self, request):
         if request.query_params:
