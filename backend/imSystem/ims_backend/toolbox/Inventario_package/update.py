@@ -1,4 +1,4 @@
-from backend.imSystem.ims_backend.models import StockInsumo
+from ims_backend.models import StockInsumo
 from ims_backend.toolbox.exceptions import NotFoundException, InternalServerException, BadRequestException
 from ims_backend.serializers import UpdateInsumoSerializer
 from django.db.models import F

@@ -1,7 +1,8 @@
 from django.db import transaction
 from ims_backend.toolbox import exceptions
 from ims_backend.serializers import PayloadSerializer
-from backend.imSystem.ims_backend.models import *
+from ims_backend.models import (Despacho,Ambulancia,Atencion,SignosVitales,
+Cronologia,DetalleInsumoAtencion,PreInforme,StockInsumo,Documento)
 from django.shortcuts import get_object_or_404
 from django.forms.models import model_to_dict
 from ims_backend.task_package.task_s3 import enviar_s3

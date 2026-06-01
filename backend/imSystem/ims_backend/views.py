@@ -180,7 +180,7 @@ class GetPersonal(APIView):
         serializer = PersonalSerializer(personal_activo, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 #APi para OPERAR datos del personal
-class DataPersonal(APIView):
+class AddPersonal(APIView):
     http_method_names = ['post']
     permission_classes = [MFAVerified & ControlProfileOnly]
     #Agregar un trabajador
@@ -395,7 +395,6 @@ class AddMemberToGroup(APIView):
 class RegistrosPacientesAPI(APIView):
     http_method_names = ['get','post']
     permission_classes = [MFAVerified & ControlProfileOnly]
-
     def post(self, request):
         serializer = PacienteSerializer(data=request.data)
         if serializer.is_valid():
@@ -420,7 +419,9 @@ class RegistrosPacientesAPI(APIView):
                 return Response({'error':f'{str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+class GetPacientes(APIView):
+    http_method_names = ["get"]
+    permission_classes = [MFAVerified & ControlProfileOnly]
     def get(self, request):
         if request.query_params:
             serialize = ParamPacienteSerializer(data=request.query_params)
