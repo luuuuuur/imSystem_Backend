@@ -393,7 +393,7 @@ class AddMemberToGroup(APIView):
 
 # API para el registro de los pacientes
 class RegistrosPacientesAPI(APIView):
-    http_method_names = ['get','post']
+    http_method_names = ['post']
     permission_classes = [MFAVerified & ControlProfileOnly]
     def post(self, request):
         serializer = PacienteSerializer(data=request.data)
@@ -419,6 +419,8 @@ class RegistrosPacientesAPI(APIView):
                 return Response({'error':f'{str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class GetPacientes(APIView):
     http_method_names = ["get"]
     permission_classes = [MFAVerified & ControlProfileOnly]
