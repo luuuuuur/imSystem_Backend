@@ -10,7 +10,8 @@ def get_by_chunks()->StreamingHttpResponse:
                 "atencion_id":log.atencion_id if log.atencion else None,
                 "usuario": log.usuario.id,
                 "rut":log.rut_usuario,
-                "descripcion": log.descripcion
+                "descripcion": log.descripcion,
+                "created_at": log.timestamp
             })
     
     return StreamingHttpResponse(generate(), content_type='application/x-ndjson')
