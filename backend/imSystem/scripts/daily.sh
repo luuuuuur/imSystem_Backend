@@ -64,10 +64,8 @@ chmod o+r ~/product/imSystem_Backend/backend/imSystem/staticfiles/ims_test_clien
 sudo systemctl daemon-reload
 sudo systemctl restart nginx
 sudo systemctl restart gunicorn
-sudo systemctl restart celery
 
 
 echo "=== STATUS ==="
 sudo systemctl is-active nginx    && echo "nginx:    activo" || echo "ERROR: nginx no está activo"
 sudo systemctl is-active gunicorn && echo "gunicorn: activo" || echo "ERROR: gunicorn no está activo"
-sudo systemctl is-active celery && echo "celery: activo" || echo "ERROR: celery no está activo"
