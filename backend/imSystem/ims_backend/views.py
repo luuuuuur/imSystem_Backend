@@ -130,7 +130,7 @@ class Login(EnsureCsrfMixin, APIView):
 #/api/token/post/
 class TokenPOST(APIView):
     http_method_names= ['post']
-    permission_clases = [MFAVerified]
+    permission_classes = [MFAVerified]
     def post(self, request):
         serializer = DeviceToken(data=request.data)
         if serializer.is_valid():
