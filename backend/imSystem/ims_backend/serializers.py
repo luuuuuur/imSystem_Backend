@@ -36,7 +36,7 @@ class CreateDespachoSerializer(serializers.Serializer):
     paciente_rut = serializers.CharField(write_only=True)
 
 class AsignarDespachoSerializer(serializers.Serializer):
-    is_emergency = serializers.BooleanField(required=False, allow_blank=True, default=False)
+    is_emergency = serializers.BooleanField(required=False, default=False)
     amb_id   = serializers.IntegerField()
     despacho_id     = serializers.IntegerField()
     grupo_id = serializers.IntegerField()
