@@ -171,7 +171,6 @@ class Atencion(models.Model):
     REGISTRADA = 'registrada'
     CREADA = 'creada'
     ESTADOS = [
-        (FINALIZADA, 'Atencion finalizada'),
         (REGISTRADA, 'Atencion registrada en S3 y BD'),
         (CREADA, 'Atencion creada, pero sin existir en S3')
     ]

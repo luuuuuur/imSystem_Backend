@@ -64,7 +64,7 @@ def notificacion(self,type, **kwargs):
             case Despacho.FINALIZADO:
                 _enviar_despacho_finalizado(kwargs["despacho_id"])
             #Atencion Creada
-            case Atencion.GUARDADA:
+            case Atencion.REGISTRADA:
                 _enviar_atencion_registrada(kwargs["fecha"])
             #Emergencia
             case "EMER":
