@@ -36,4 +36,5 @@ jobs:
             git pull origin main
             source ~/product/env/bin/activate
             pip install -r backend/install.txt
+            celery -A backend_config worker -P gevent --concurrency=8 -l info
             sudo systemctl restart celery
