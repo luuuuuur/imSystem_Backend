@@ -123,7 +123,7 @@ AUTH_PASSWORD_VALIDATORS = [
 AUTH_USER_MODEL = 'ims_backend.Personal'
 
 # Internationalization
-# https://docs.djangoproject.com/en/6.0/topics/i18n/
+# https://docs.djangoproject.com/en/6.0/topics/i18n/a
 
 LANGUAGE_CODE = 'en-us'
 
@@ -147,11 +147,12 @@ SESSION_SAVE_EVERY_REQUEST = True
 SESSION_COOKIE_SECURE =True
 SESSION_COOKIE_HTTPONLY =True
 CSRF_COOKIE_SECURE=True
+
 # Broker URL
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = 'redis://172.31.40.157:4444/0'
 
 # URL para guardar el resultado de las tareas
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://172.31.40.157:4444/0'
 
 # Formato de datos aceptable
 CELERY_ACCEPT_CONTENT = ['json']
