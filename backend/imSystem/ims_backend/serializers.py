@@ -36,6 +36,7 @@ class CreateDespachoSerializer(serializers.Serializer):
     paciente_rut = serializers.CharField(write_only=True)
 
 class AsignarDespachoSerializer(serializers.Serializer):
+    is_emergency = serializers.BooleanField(required=False, allow_blank=True, default=False)
     amb_id   = serializers.IntegerField()
     despacho_id     = serializers.IntegerField()
     grupo_id = serializers.IntegerField()
@@ -170,3 +171,12 @@ class MoveItemSerializer(serializers.Serializer):
     ambulancia_to_id = serializers.IntegerField()
     ambulancia_from_id = serializers.IntegerField()
     cantidad = serializers.IntegerField()
+
+#se asume que el Despacho exista previamente
+class ProgramarDespachoSerializer(serializers.Serializer):
+    despacho_id = serializers.IntegerField()
+    fecha_programada = serializers.DateTimeField()
+    grupo_id= serializers.IntegerField()
+
+class DeviceToken(serializers.Serializer):
+    token = serializers.CharField()

@@ -1,5 +1,5 @@
-from ims_backend.models import *
-from ims_backend.serializers import *
+from ims_backend.models import DespachoPersonal, Despacho, SuscritosAGrupo
+from ims_backend.serializers import ObtenerDespachoSerializer
 from ims_backend.toolbox import exceptions
 
 def all_despachos(request):

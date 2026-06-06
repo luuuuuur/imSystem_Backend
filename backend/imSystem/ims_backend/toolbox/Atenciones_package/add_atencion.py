@@ -12,6 +12,8 @@ import base64
 from ims_backend.toolbox.customencoder import CustomEncoder
 from django.db.models   import F
 import rustjson
+from ims_backend.task_package.task_notificaciones import notificacion
+from ims_backend.toolbox.Despachos_package.change_status import change_despacho_status
 def add_atencion(request):
     serializer = PayloadSerializer(data=request.data)
     if serializer.is_valid():
@@ -105,17 +107,16 @@ def add_atencion(request):
                     archivo_hash=hash_bytes.hex(),
                     atencion=atencion
                 )
-                despacho.estado = "finalizado"
-                despacho.save(update_fields=["estado"])
+                change_despacho_status(type=Despacho.FINALIZADO,despacho=despacho)
                 transaction.on_commit(lambda:agregar_log_atencion.delay(documento=document))
+                transaction.on_commit(lambda:notificacion.delay("AR",fecha=str(despacho.fecha_finalizacion)))
         except ValueError as ve:
             raise exceptions.BadRequestException(detail=str(ve))
-        except Exception as e:
-            raise exceptions.InternalServerException(detail=str(e))
+        except:
+            raise exceptions.InternalServerException
         try:
             file_json = json.dumps(document, ensure_ascii=False, cls=CustomEncoder)
             enviar_s3.delay(file_json, hash_bytes.hex(), base64.b64encode(signature).decode())
-            
             return {"success": "Succeeded", "hash": hash_bytes.hex()}
         except Exception:
             raise exceptions.InternalServerException(detail="Failed to upload to S3")

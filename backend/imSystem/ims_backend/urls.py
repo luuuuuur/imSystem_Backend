@@ -2,6 +2,7 @@ from django.urls import path
 from .views import *
 urlpatterns = [
     path("api/login/", Login.as_view(), name="Login"),
+    path("api/token/post/", TokenPOST.as_view(), name="TokenPOST"),
     path("api/personal/", GetPersonal.as_view(), name="DataPersonal"),
     path("api/personal/add/",AddPersonal.as_view(), name="AddPersonal"),
     path("api/pacientes/add/", RegistrosPacientesAPI.as_view(), name="RegistroPacientesAPI"),
@@ -14,6 +15,7 @@ urlpatterns = [
     path("api/despachos/getall/", AllDespachos.as_view(), name="AllDespachos"),
     path("api/despachos/add/", CreateDespacho.as_view(), name="CreateDespacho"),
     path("api/despachos/asignar/", AsignarDespacho.as_view(), name="AsignarDespacho"),
+    path("api/despachos/programar/",ProgramarDespacho.as_view(), name="ProgramarDespacho"),
     path("api/ambulancias/", AmbulanciaAPI.as_view(), name="AmbulanciaAPI"),
     path("api/atenciones/", RetornarAtencionAPI.as_view(), name="AtencionAPI"),
     path("api/atenciones/add/", RegistroAtencionAPI.as_view(), name="RegistroAtencionAPI"),

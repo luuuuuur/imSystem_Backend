@@ -100,11 +100,19 @@ class UnidadMedidaInsumo(models.Model):
     
 
 class Despacho(models.Model):
+    RECIBIDO = 'recibido'
+    ASIGNADO = 'asignado'
+    FINALIZADO = 'finalizado'
+    CANCELADO = 'cancelado'
+    PROGRAMADO = 'programado'
+    EMERGENCIA = 'emergencia'
     ESTADOS = [
-        ('recibido', 'Recibido en control'),
-        ('asignado', 'Asignado a equipo'),
-        ('finalizado', 'Finalizado'),
-        ('cancelado', 'Cancelado'),
+        (RECIBIDO, 'Recibido en control'),
+        (ASIGNADO, 'Asignado a equipo'),
+        (FINALIZADO, 'Finalizado'),
+        (CANCELADO, 'Cancelado'),
+        (PROGRAMADO, 'Despacho Programado'),
+        (EMERGENCIA, 'Despacho Emergencia')
     ]
 
     direccion_origen = models.CharField(max_length=255)
@@ -131,6 +139,7 @@ class Despacho(models.Model):
     #ES AUTOMATICO TOMA EL USUARIO MEDIANTE REQUEST.USER
 
     estado = models.CharField(max_length=30, choices=ESTADOS, default='recibido')
+    fecha_programada = models.DateTimeField(null=True, blank=True)
     fecha_llamado = models.DateTimeField(auto_now_add=True)
     fecha_asignacion = models.DateTimeField(null=True, blank=True)
     fecha_finalizacion = models.DateTimeField(null=True, blank=True)
@@ -158,6 +167,14 @@ class DespachoPersonal(models.Model):
 
 
 class Atencion(models.Model):
+    FINALIZADA = 'finalizada'
+    REGISTRADA = 'registrada'
+    CREADA = 'creada'
+    ESTADOS = [
+        (FINALIZADA, 'Atencion finalizada'),
+        (REGISTRADA, 'Atencion registrada en S3 y BD'),
+        (CREADA, 'Atencion creada, pero sin existir en S3')
+    ]
     ambulancia = models.ForeignKey(Ambulancia, on_delete=models.PROTECT)
     despacho = models.OneToOneField(
         Despacho,

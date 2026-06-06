@@ -1,6 +1,5 @@
-from ims_backend.aws_package.secrets_manager import secrets_aws
-
-
+from ims_backend.aws_package.secrets_manager import Secrets, Secrets_API
+secrets_aws = Secrets.generate_secrets()
 #---BACKEND SETTINGS
 from pathlib import Path
 import os

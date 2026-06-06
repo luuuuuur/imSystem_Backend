@@ -1,7 +1,6 @@
 # ─── DJANGO REST FRAMEWORK ───────────────────────────────────────────────────
 from rest_framework.views       import APIView
 from rest_framework.response    import Response
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
 from rest_framework import status
 # ─── DJANGO ──────────────────────────────────────────────────────────────────
@@ -22,10 +21,10 @@ from .serializers import AgregarMiembroGrupo
 from .serializers import PacienteSerializer
 from .serializers import CreateDespachoSerializer
 from .serializers import AsignarDespachoSerializer
-from .serializers import ParamSerializer
 from .serializers import ParamPacienteSerializer
-from .serializers import ParamAtencionSerializer
 from .serializers import AuthenticationSerializer
+from .serializers import ProgramarDespachoSerializer
+from .serializers import DeviceToken
 # ─── MODELS ──────────────────────────────────────────────────────────────────
 from .models import Personal
 from .models import Paciente
@@ -35,24 +34,28 @@ from .models import RolPersonal
 from .models import Despacho
 from .models import Ambulancia
 from .models import DespachoPersonal
-from .models import Atencion
 # ─── LOCAL / AWS ─────────────────────────────────────────────────────────────
 from ims_backend.toolbox.Atenciones_package.add_atencion import add_atencion
+from ims_backend.toolbox.Atenciones_package.return_noquery import atencion_noquery
+from ims_backend.toolbox.Atenciones_package.return_with_query import atencion_with_query
 from ims_backend.toolbox.Despachos_package.all_despachos import all_despachos
 from ims_backend.toolbox.Despachos_package.solicitud_usuario import solicitud_usuario
 from .toolbox.Inventario_package import add, gets as gets_inventario, update
 from .toolbox.Ambulancia_package import gets as gets_ambulancia, move
-from .utils              import(get_s3_download_url, generate_totp, generate_password)
-from botocore.exceptions import ClientError
+from .utils              import(generate_totp, generate_password)
 from .totp_auth.authentication import authentication
 from ims_backend.toolbox.exceptions import *
 from ims_backend.task_package.task_log_grupos import crear_grupo_log, agregar_miembros_log,actualizar_estado_miembros_log
 from ims_backend.task_package.task_log_paciente import agregar_paciente_log
-from ims_backend.task_package.task_log_despacho import crear_despacho_log, asignar_despacho_log
+from ims_backend.task_package.task_log_despacho import crear_despacho_log, asignar_despacho_log, cambiar_estado_log
 from ims_backend.task_package.task_log_personal import agregar_personal_log
-from ims_backend.toolbox.exceptions import InternalServerException
 from ims_backend.toolbox.Logs_package.chunks_get import get_by_chunks
 from ims_backend.toolbox.Fhir_package.export_r4 import export_hl7
+from ims_backend.toolbox.Grupos_package.no_query_params import no_query_params
+from ims_backend.toolbox.Grupos_package.get_with_query import with_query
+from ims_backend.toolbox.Despachos_package.change_status import change_despacho_status
+from ims_backend.task_package.task_notificaciones import notificacion
+from ims_backend.toolbox.Personal_package.set_device_token import set_device
 # =============================================================================
 # PERMISOS PERSONALIZADOS
 # =============================================================================
@@ -123,7 +126,22 @@ class Login(EnsureCsrfMixin, APIView):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
+#TOKEN DEVICE
+#/api/token/post/
+class TokenPOST(APIView):
+    http_method_names= ['post']
+    permission_clases = [MFAVerified]
+    def post(self, request):
+        serializer = DeviceToken(data=request.data)
+        if serializer.is_valid():
+            valid_data = serializer.validated_data
+            try:
+                set_device(request.user.id, valid_data["token"])
+                return Response({'success'}, status=status.HTTP_201_CREATED)
+            except:
+                raise InternalServerException
+        else:
+            raise BadRequestException
 #ADMINISTRACION----------------------
 
 # #API para obtener TODOS los insumos
@@ -248,54 +266,11 @@ class GruposObtener(APIView):
     permission_classes = [ControlProfileOnly & MFAVerified]
     def get(self, request):
         if request.query_params:
-            serializer = ParamSerializer(data=request.query_params)
-            if serializer.is_valid():
-                valid_data = serializer.validated_data
-                grupos = {}
-                suscripciones = SuscritosAGrupo.objects.filter(
-                    grupo_id=valid_data['group_id'],fecha_salida=None
-                ).select_related('grupo', 'personal', 'personal__rol')
-                for suscripcion in suscripciones:
-                    grupo_id = suscripcion.grupo.id
-                    if grupo_id not in grupos:
-                        grupos[grupo_id] = {
-                            'grupo_id': grupo_id,
-                            'grupo_nombre': suscripcion.grupo.nombre_grupo,
-                            'miembros': []
-                        }
-                    grupos[grupo_id]['miembros'].append({
-                        'nombre': suscripcion.personal.full_name,
-                        'rut': suscripcion.personal.rut,
-                        'rol': suscripcion.personal.rol.nombre_rol if suscripcion.personal.rol else None,
-                        'dia_ingresado': suscripcion.fecha_entrada,
-                        'dia_salida': suscripcion.fecha_salida
-                    })
-                return Response(list(grupos.values()), status=status.HTTP_200_OK)
-            else:
-                return Response({'error':'not correct format or id'}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            grupos = {}
-            suscripciones = SuscritosAGrupo.objects.filter(
-                fecha_salida=None
-            ).select_related('grupo', 'personal', 'personal__rol')
-            
-            for suscripcion in suscripciones:
-                grupo_id = suscripcion.grupo.id
-                if grupo_id not in grupos:
-                    grupos[grupo_id] = {
-                        'grupo_id': grupo_id,
-                        'grupo_nombre': suscripcion.grupo.nombre_grupo,
-                        'miembros': []
-                    }
-                grupos[grupo_id]['miembros'].append({
-                    'nombre': suscripcion.personal.full_name,
-                    'rut': suscripcion.personal.rut,
-                    'rol': suscripcion.personal.rol.nombre_rol if suscripcion.personal.rol else None,
-                    'dia_ingresado': suscripcion.fecha_entrada,
-                    'dia_salida': suscripcion.fecha_salida
-                })
-            return Response(list(grupos.values()), status=status.HTTP_200_OK)
+            r = with_query(request)
+            return Response(r, status=status.HTTP_200_OK)
         
+        r = no_query_params()
+        return Response(r, status=status.HTTP_200_OK)
 
 class GrupoCrear(APIView):
     http_method_names = ['post']
@@ -361,7 +336,7 @@ class GrupoRemoverMiembro(APIView):
 # API para AÑADIR miembros a grupos YA EXISTENTES
 class AddMemberToGroup(APIView):
     http_method_names = ['post']
-    permission_classes = [ControlProfileOnly]
+    permission_classes = [ControlProfileOnly & MFAVerified]
     def post(self, request):
         serializer = AgregarMiembroGrupo(data=request.data)
         if serializer.is_valid():
@@ -467,7 +442,7 @@ class CreateDespacho(APIView):
                         descripcion_llamado=valid_data['descripcion_llamado'],
                         paciente = paciente,
                         creado_por=request.user,
-                        estado='recibido'
+                        estado=Despacho.RECIBIDO
                     )
                     log_data["despacho_id"]=despacho.id
                     transaction.on_commit(lambda: crear_despacho_log.delay(data=log_data))
@@ -495,7 +470,7 @@ class AsignarDespacho(APIView):
             valid_data = serializer.validated_data
             try:
                 amb = get_object_or_404(Ambulancia, id=valid_data['amb_id'])
-                despacho=get_object_or_404(Despacho, id=valid_data['despacho_id'])
+                _despacho=get_object_or_404(Despacho, id=valid_data['despacho_id'])
                 grupo_nombre=get_object_or_404(GrupoPersonal, id=valid_data['grupo_id'])
                 log_data = {
                     "patente":amb.patente,
@@ -503,15 +478,16 @@ class AsignarDespacho(APIView):
                     "user_id":request.user.id,
                     "grupo_id":grupo_nombre.id,
                     "nombre_grupo": grupo_nombre.nombre_grupo,
-                    "id":despacho.id
+                    "id":_despacho.id
                 }
-                if DespachoPersonal.objects.filter(despacho=despacho, grupo=grupo_nombre).exists():
+                if DespachoPersonal.objects.filter(despacho=_despacho, grupo=grupo_nombre).exists():
                     return Response({'error': 'Este grupo ya está asignado a este despacho'}, status=status.HTTP_409_CONFLICT)
                 with transaction.atomic():
-                    Despacho.objects.filter(id=valid_data['despacho_id']).update(
-                        fecha_asignacion=timezone.now(),asignado_por=request.user,
-                        ambulancia=amb, estado='asignado')
-                    DespachoPersonal.objects.create(despacho=despacho, grupo=grupo_nombre)
+                    change_despacho_status(type=Despacho.ASIGNADO, despacho=_despacho, fecha_prog=None)
+                    _despacho.ambulancia=amb
+                    _despacho.asignado_por = request.user
+                    _despacho.save(update_fields=["ambulancia","asignado_por"])
+                    DespachoPersonal.objects.create(despacho=_despacho, grupo=grupo_nombre)
                     grupo_miembros = SuscritosAGrupo.objects.filter(grupo=grupo_nombre,fecha_salida = None )
                     personal = []
                     for members in grupo_miembros:
@@ -519,6 +495,8 @@ class AsignarDespacho(APIView):
                                          'personal_rut': members.personal.rut,
                                          'personal_name':members.personal.full_name})
                     transaction.on_commit(lambda: asignar_despacho_log.delay(data=log_data))
+                if valid_data["is_emergency"]:
+                    notificacion.delay(type=Despacho.EMERGENCIA, dir=_despacho.direccion_destino, grupo_id=grupo_nombre.id)
                 return Response({'success':'success', 'despacho_data':{
                         'id':valid_data['despacho_id'],
                         'grupo':{
@@ -531,6 +509,31 @@ class AsignarDespacho(APIView):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+#/api/despachos/programar/
+class ProgramarDespacho(APIView):
+    http_method_names = ['patch']
+    permission_classes = [MFAVerified & ControlProfileOnly]
+    #query_params -> Serializer -> Update despacho status function
+    def patch(self, request):
+        log_data = {
+            "rut": request.user.rut,
+            "user_id": request.user.id
+        }
+        serializer = ProgramarDespachoSerializer(data= request.data)
+        if serializer.is_valid():
+            _valid_data = serializer.validated_data
+            try:
+                with transaction.atomic():
+                    _despacho = get_object_or_404(Despacho, id=_valid_data["despacho_id"])
+                    change_despacho_status(type=Despacho.PROGRAMADO, despacho=_despacho,fecha_prog=_valid_data["fecha_programada"])
+                    log_data["despacho_id"] = _valid_data["despacho_id"]
+                    log_data["estado"] = Despacho.PROGRAMADO
+                    transaction.on_commit(lambda: cambiar_estado_log.delay(data=log_data))
+                    transaction.on_commit(lambda: notificacion.delay(type="DP",grupo_id=str(_valid_data["grupo_id"]), fecha=str(_despacho.fecha_programada)))
+                return Response({}, status=status.HTTP_200_OK)
+            except: return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else: return Response({}, status=status.HTTP_400_BAD_REQUEST)
+        
 
 # API para obtener TODOS Los despachos sin necesidad de incluir al usuario per se
 class AllDespachos(APIView):
@@ -556,39 +559,10 @@ class RetornarAtencionAPI(APIView):
     http_method_names = ['get']
     def get(self, request):
         if request.query_params:
-            serializer = ParamAtencionSerializer(data=request.query_params)
-            if serializer.is_valid():
-                valid_data=serializer.validated_data
-                try:
-                    atencion =  get_object_or_404(Atencion, id=valid_data['id'])
-                    document = atencion.documentos.first()
-                    if not document:
-                        return Response({'error': 'No document found for this atencion'}, status=status.HTTP_404_NOT_FOUND)
-                    response = get_s3_download_url(document.archivo_s3_key, 3600)
-                    return Response({"success":f"{response}"}, status=status.HTTP_200_OK)
-                except ClientError:
-                    return Response({"error":"failed to generate the url"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            atencion = Atencion.objects.select_related('despacho__paciente').all()
-            response = []
-            for a in atencion:
-                response.append({
-                    'atencion_id': a.id,
-                    'hora_salida':a.hora_salida,
-                    'hora_llegada':a.hora_llegada,
-                    'estado_sello':a.estado_sello,
-                    'firma_digital': a.sello_electronico,
-                    'despacho':{
-                        'despacho_id':a.despacho.id,
-                        'paciente':{
-                            'nombre':a.despacho.paciente.nombre_completo,
-                            'rut':a.despacho.paciente.rut
-                        } if a.despacho.paciente else None,
-                    }if a.despacho else None
-                })
-            return Response(response, status=status.HTTP_200_OK)
+            r = atencion_with_query(request)
+            return Response({'success':f'{r}'}, status=status.HTTP_200_OK)
+        r = atencion_noquery()
+        return Response(r, status=status.HTTP_200_OK)
         
 
 
