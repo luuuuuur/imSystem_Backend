@@ -444,7 +444,7 @@ class CreateDespacho(APIView):
                         creado_por=request.user,
                         estado=Despacho.RECIBIDO
                     )
-                    log_data["despacho_id"]=despacho.id
+                    log_data["id"]=despacho.id
                     transaction.on_commit(lambda: crear_despacho_log.delay(data=log_data))
                 return Response({'success':'success', 
                                  'despacho':
