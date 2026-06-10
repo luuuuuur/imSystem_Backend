@@ -1,3 +1,13 @@
+# Debe ir antes que cualquier otro import: parchea socket/ssl/threading para
+# que el pool gevent sea cooperativo (boto3, firebase-admin, etc.), y luego
+# parchea psycopg2 (no cubierto por monkey.patch_all, usa libpq en C) para
+# que las queries de Django tampoco bloqueen el loop de gevent.
+from gevent import monkey
+monkey.patch_all()
+
+from psycogreen.gevent import patch_psycopg
+patch_psycopg()
+
 import os
 from celery import Celery
 from celery.signals import worker_process_init
