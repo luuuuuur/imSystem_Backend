@@ -67,7 +67,7 @@ def notificacion(self,type, **kwargs):
             case Atencion.REGISTRADA:
                 _enviar_atencion_registrada(kwargs["fecha"])
             #Emergencia
-            case "EMER":
+            case Despacho.EMERGENCIA:
                 _enviar_despacho_emergencia(kwargs["dir"], kwargs["grupo_id"])
             #None
             case _:
