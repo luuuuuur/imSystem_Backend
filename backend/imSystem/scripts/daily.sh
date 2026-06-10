@@ -55,8 +55,7 @@ echo "=== ACTUALIZANDO DEPENDENCIAS ==="
 "$PIP" install -r "$INSTALL_FILE" --quiet
 "$PIP" install "${APP_DIR}"/wheels/rustjson-*.whl --force-reinstall
 echo "=== APLICANDO MIGRACIONES ==="
-"$PYTHON" "${DJANGO_APP}/manage.py" makemigrations --noinput
-"$PYTHON" "${DJANGO_APP}/manage.py" migrate --noinput 
+"$PYTHON" "${DJANGO_APP}/manage.py" migrate --noinput
 
 echo "=== REINICIANDO GUNICORN Y NGINX Y CELERY ==="
 cp ~/product/imSystem_Backend/backend/ims_test_client.html ~/product/imSystem_Backend/backend/imSystem/staticfiles/
