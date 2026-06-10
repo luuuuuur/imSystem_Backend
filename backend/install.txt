@@ -38,3 +38,5 @@ redis
 django-celery-results
 fhir.resources
 firebase-admin
+psycogreen
+gevent
