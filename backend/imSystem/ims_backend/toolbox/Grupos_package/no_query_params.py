@@ -23,6 +23,6 @@ def no_query_params():
                         'dia_salida': suscripcion.fecha_salida
                     })
             r = list(grupos.values())
-            return r
+        return r
     except:
         raise InternalServerException
