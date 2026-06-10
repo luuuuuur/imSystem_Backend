@@ -22,7 +22,7 @@ def no_query_params():
                         'dia_ingresado': suscripcion.fecha_entrada,
                         'dia_salida': suscripcion.fecha_salida
                     })
-            r = list(grupos.values())
+        r = list(grupos.values())
         return r
     except:
         raise InternalServerException
