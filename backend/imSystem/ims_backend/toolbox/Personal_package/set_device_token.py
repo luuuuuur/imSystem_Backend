@@ -5,7 +5,7 @@ def set_device(user_id,token):
     try:
         with transaction.atomic():
             DeviceToken.objects.update_or_create(
-                usuario=user_id,
+                usuario_id=user_id,
                 defaults={"device_token":token}
             )
         return True
