@@ -16,7 +16,7 @@ AWS_BUCKET_NAME=secrets_aws["AWS_BUCKET_NAME"]
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["api.imsambulancias.cl"]
+ALLOWED_HOSTS = ["api.imsambulancias.cl", "13.216.65.240"]
 
 
 # Application definition
