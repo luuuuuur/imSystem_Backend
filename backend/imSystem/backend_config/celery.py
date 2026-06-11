@@ -1,6 +1,5 @@
 import os
 from celery import Celery
-from backend_config import settings
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend_config.settings')
 app = Celery('IMS_CELERY')
@@ -27,3 +26,12 @@ def worker(**kwargs):
         region_name=Secrets._secrets["AWS_S3_REGION"],
         config=Config(signature_version='s3v4'),
     )
+
+#for task to see if they ACTUALLY DO SHIT or not
+from celery.signals import task_success
+
+@task_success.connect
+def on_task_success(sender=None, result=None, **kwargs):
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f'Task {sender.name} succeeded')
