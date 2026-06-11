@@ -11,7 +11,7 @@ def get_by_chunks()->StreamingHttpResponse:
                 "usuario": log.usuario.id,
                 "rut":log.rut_usuario,
                 "descripcion": log.descripcion,
-                "created_at": log.timestamp
+                "created_at": log.timestamp.isoformat() if log.timestamp else None
             })
     
     return StreamingHttpResponse(generate(), content_type='application/x-ndjson')
