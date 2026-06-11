@@ -33,12 +33,11 @@ sortedcontainers==2.4.0
 sqlparse==0.5.5
 urllib3==2.7.0
 maturin
-celery
-redis
 django-celery-results
 fhir.resources
 firebase-admin
-psycogreen
-gevent
-
+celery==5.6.3
+gevent==26.5.0
+psycogreen==1.0.2
+redis==8.0.0
 
