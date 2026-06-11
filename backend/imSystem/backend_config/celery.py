@@ -1,15 +1,8 @@
-from gevent import monkey
-monkey.patch_all()
-from pyscogreen.gevent import patch_psycopg
-patch_psycopg()
-
-import os
 from celery import Celery
-
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend_config.settings')
+from backend_config import settings
 
 app = Celery('IMS_CELERY')
-app.config_from_object('django.conf:settings', namespace='CELERY')
+app.config_from_object(settings, namespace='CELERY')
 app.autodiscover_tasks()
 from celery.signals import worker_init
 
