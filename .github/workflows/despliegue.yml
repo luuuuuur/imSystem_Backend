@@ -36,7 +36,5 @@ jobs:
               cd ~/product/imSystem_Backend
               git fetch origin main
               git reset --hard origin/main
-              source ~/product/env/bin/activate
-              pip install -r backend/install.txt
               cd ~/product/imSystem_Backend/backend/imSystem/scripts
               bash daily_celery.sh
