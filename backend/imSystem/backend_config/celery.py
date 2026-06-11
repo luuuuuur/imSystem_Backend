@@ -7,13 +7,6 @@ app = Celery('IMS_CELERY')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
-@worker_init.connect
-def _patch_gevent(**kwargs):
-    from gevent import monkey
-    monkey.patch_all()
-    from psycogreen.gevent import patch_psycopg
-    patch_psycopg()
-
 @worker_process_init.connect
 def _reinit_after_fork(**kwargs):
     from django.db import connections
