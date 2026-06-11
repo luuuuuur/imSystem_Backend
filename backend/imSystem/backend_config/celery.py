@@ -1,15 +1,18 @@
+import os
 from celery import Celery
 from backend_config import settings
 
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend_config.settings')
 app = Celery('IMS_CELERY')
-app.config_from_object(settings, namespace='CELERY')
-app.autodiscover_tasks()
-from celery.signals import worker_init
+app.config_from_object('django.conf:settings', namespace='CELERY')
+app.autodiscover_tasks(['ims_backend.task_package'])
+from celery.signals import worker_process_init
 
-@worker_init.connect
+@worker_process_init.connect
 def worker(**kwargs):
-    import django
-    django.setup()
+    from django.db import connections
+    connections.close_all()
+
 
     import boto3
     from botocore.config import Config
