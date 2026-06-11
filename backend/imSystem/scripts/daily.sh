@@ -57,7 +57,7 @@ echo "=== ACTUALIZANDO DEPENDENCIAS ==="
 echo "=== APLICANDO MIGRACIONES ==="
 "$PYTHON" "${DJANGO_APP}/manage.py" migrate --noinput
 
-echo "=== REINICIANDO GUNICORN Y NGINX Y CELERY ==="
+echo "=== REINICIANDO GUNICORN Y NGINX ==="
 cp ~/product/imSystem_Backend/backend/ims_test_client.html ~/product/imSystem_Backend/backend/imSystem/staticfiles/
 chmod o+r ~/product/imSystem_Backend/backend/imSystem/staticfiles/ims_test_client.html
 sudo systemctl daemon-reload

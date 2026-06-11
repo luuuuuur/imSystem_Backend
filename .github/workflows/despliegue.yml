@@ -36,4 +36,5 @@ jobs:
             git pull origin main
             source ~/product/env/bin/activate
             pip install -r backend/install.txt
-            sudo systemctl restart celery
+            cd ~/product/imSystem_Backend/backend/imSystem/scripts
+            bash daily_celery.sh
