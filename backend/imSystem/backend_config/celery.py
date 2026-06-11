@@ -1,17 +1,22 @@
+from gevent import monkey
+monkey.patch_all()
+from pyscogreen.gevent import patch_psycopg
+patch_psycopg()
+
 import os
 from celery import Celery
-from celery.signals import worker_process_init
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend_config.settings')
 
 app = Celery('IMS_CELERY')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
+from celery.signals import worker_init
 
-@worker_process_init.connect
-def _reinit_after_fork(**kwargs):
-    from django.db import connections
-    connections.close_all()
+@worker_init.connect
+def worker(**kwargs):
+    import django
+    django.setup()
 
     import boto3
     from botocore.config import Config
