@@ -32,10 +32,11 @@ jobs:
           host: ${{secrets.EC2_BROKER_1}}
           username: ${{secrets.EC2_USER_BROKER_1}}
           key: ${{secrets.SSH_KEY}}
+          timeout: 60s
           command_timeout: 30m
           script: |
-              cd ~/product/imSystem_Backend
-              git fetch origin main
-              git reset --hard origin/main
-              cd ~/product/imSystem_Backend/backend/imSystem/scripts
-              bash daily_celery.sh
+            cd ~/product/imSystem_Backend
+            git fetch origin main
+            git reset --hard origin/main
+            cd ~/product/imSystem_Backend/backend/imSystem/scripts
+            bash daily_celery.sh
