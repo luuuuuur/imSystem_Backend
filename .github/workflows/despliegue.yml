@@ -16,6 +16,8 @@ jobs:
           host: ${{secrets.SERVER_2}}
           username: ${{secrets.USER_SERVER_2}}
           key: ${{secrets.SSH_KEY}}
+          timeout: 60s
+          command_timeout: 30m
           script: |
                   cd ~/product/imSystem_Backend
                   git fetch origin main
