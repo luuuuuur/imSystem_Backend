@@ -145,7 +145,8 @@ class PayloadSerializer(serializers.Serializer):
 class AuthenticationSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField()
-    totp_code = serializers.CharField()
+class LoginSerializer(serializers.Serializer):
+    totp_code=serializers.CharField()
 class InsumoIdSerializer(serializers.Serializer):
     insumo_id = serializers.IntegerField()
 class AmbulanciaSerializerID(serializers.Serializer):

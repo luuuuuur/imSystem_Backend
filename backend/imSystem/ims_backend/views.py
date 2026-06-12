@@ -94,7 +94,7 @@ class Authenticate(APIView):
                 return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
+from ims_backend.serializers import LoginSerializer
 class Login(EnsureCsrfMixin, APIView):
     permission_classes = [AllowAny]
     http_method_names = ['get', 'post']
@@ -103,7 +103,7 @@ class Login(EnsureCsrfMixin, APIView):
         return Response({}, status=status.HTTP_200_OK)
 
     def post(self, request):
-        serializer = AuthenticationSerializer(data=request.data)
+        serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
             try:
                 r = iniciar_sesion(request, serializer.validated_data)
