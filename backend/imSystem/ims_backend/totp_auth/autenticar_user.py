@@ -25,8 +25,8 @@ def iniciar_sesion(request, data):
     return {
         "session": request.session.session_key,
         "user_data": {
-            "role": user.rol.nombre_rol,
-            "first_name": user.first_name,
-            "last_name": user.last_name
+            "role": user_data.rol.nombre_rol,
+            "first_name": user_data.first_name,
+            "last_name": user_data.last_name
         }
     }
