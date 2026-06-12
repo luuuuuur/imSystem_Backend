@@ -77,55 +77,40 @@ class EnsureCsrfMixin:
 # =============================================================================
 # VISTAS
 # =============================================================================
+from ims_backend.totp_auth.autenticar_user import autenticar as auth_user
+from ims_backend.totp_auth.autenticar_user import iniciar_sesion
 
-# API para INICIAR sesion en la aplicacion
+class Authenticate(APIView):
+    permission_classes = [AllowAny]
+    http_method_names = ['post']
+
+    def post(self, request):
+        serializer = AuthenticationSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                auth_user(request, serializer.validated_data)
+                return Response({}, status=status.HTTP_200_OK)
+            except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class Login(EnsureCsrfMixin, APIView):
-    #TODO: Implementacion de MFA con Google Authenticator (TOTP)
     permission_classes = [AllowAny]
     http_method_names = ['get', 'post']
+
     def get(self, request):
         return Response({}, status=status.HTTP_200_OK)
 
     def post(self, request):
         serializer = AuthenticationSerializer(data=request.data)
         if serializer.is_valid():
-            valid_data = serializer.validated_data
             try:
-                user = authenticate (
-                        request,
-                        username = valid_data['username'],
-                        password = valid_data['password']
-                )
-                if user is None:
-                    return Response(
-                        {'error':'Fallo al cargar al usuario, estás seguro de haber ingresado las credenciales correctas?'}
-                        ,status=status.HTTP_401_UNAUTHORIZED)
-                if authentication(user.totp_secret, valid_data['totp_code']):
-                        
-                    if user.rol is None:
-                            return Response({'error':'User with no role assigned'}, status=status.HTTP_403_FORBIDDEN)
-                    else:
-                            login(request,user)
-                            request.session.save()
-                            request.session['mfa_verified'] = True
-                            r = {
-                                "session": request.session.session_key,
-                                "user_data":{
-                                    "role":user.rol.nombre_rol,
-                                    "first_name":user.first_name,
-                                    "last_name":user.last_name
-                                }
-                            }
-                            return Response(r, status=status.HTTP_200_OK)
-                else: 
-                    return Response({"error":'TOTP failed'}, status=status.HTTP_401_UNAUTHORIZED)
-            except ValueError:
-                return Response({'error':'Credenciales incorrectas o el código de 2 pasos ha vencido antes de ser validado, reintenta con más tiempo'}, status=status.HTTP_401_UNAUTHORIZED)
+                r = iniciar_sesion(request, serializer.validated_data)
+                return Response(r, status=status.HTTP_200_OK)
             except Exception as e:
-                    return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+                return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 #TOKEN DEVICE
 #/api/token/post/
 class TokenPOST(APIView):
@@ -197,6 +182,7 @@ class GetPersonal(APIView):
         personal_activo = Personal.objects.filter(is_active=True).select_related('rol')
         serializer = PersonalSerializer(personal_activo, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 #APi para OPERAR datos del personal
 class AddPersonal(APIView):
     http_method_names = ['post']
