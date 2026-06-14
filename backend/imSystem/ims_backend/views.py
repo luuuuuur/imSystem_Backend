@@ -526,7 +526,7 @@ class ProgramarDespacho(APIView):
 # API para obtener TODOS Los despachos sin necesidad de incluir al usuario per se
 class AllDespachos(APIView):
     http_method_names = ['get']
-    permission_classes = [MFAVerified]
+    permission_classes = [MFAVerified & ControlProfileOnly]
     def get(self, request):
         r = all_despachos(request)
         return Response(r, status=status.HTTP_200_OK)
