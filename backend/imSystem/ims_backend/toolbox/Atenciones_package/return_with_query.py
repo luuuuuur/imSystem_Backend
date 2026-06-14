@@ -1,5 +1,5 @@
-from ims_backend.models import Atencion
-from ims_backend.toolbox.exceptions import InternalServerException, NotFoundException
+from ims_backend.models import Atencion, SuscritosAGrupo, DespachoPersonal
+from ims_backend.toolbox.exceptions import InternalServerException, NotFoundException, ForbiddenException
 from rest_framework.serializers import ValidationError
 from ims_backend.serializers import ParamAtencionSerializer
 from django.shortcuts import get_object_or_404
@@ -11,7 +11,19 @@ def atencion_with_query(request):
     if serializer.is_valid():
         valid_data=serializer.validated_data
         try:
-            atencion =  get_object_or_404(Atencion, id=valid_data['id'])
+            atencion = get_object_or_404(Atencion, id=valid_data['id'])
+
+            if request.user.rol.nombre_rol != 'control':
+                user_groups = SuscritosAGrupo.objects.filter(
+                    personal=request.user
+                ).values_list('grupo_id', flat=True)
+
+                if not atencion.despacho or not DespachoPersonal.objects.filter(
+                    despacho=atencion.despacho,
+                    grupo_id__in=user_groups
+                ).exists():
+                    raise ForbiddenException(detail="No tienes acceso a esta atención")
+
             document = atencion.documentos.first()
             if not document:
                 raise NotFoundException(detail="No se encontró la atencion")

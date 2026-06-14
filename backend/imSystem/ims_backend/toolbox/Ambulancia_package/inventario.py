@@ -26,8 +26,8 @@ def specific(valid_data):
                 "stock": data.stock
             })
         return list(r.values())
-    except:
-        raise exceptions.NotFoundException
+    except Exception as e:
+        raise exceptions.NotFoundException(detail=str(e))
 
 
 def all():
@@ -56,5 +56,5 @@ def all():
                 "stock": data.stock
             })
         return list(r.values())
-    except:
-        raise exceptions.InternalServerException
+    except Exception as e:
+        raise exceptions.InternalServerException(detail=str(e))

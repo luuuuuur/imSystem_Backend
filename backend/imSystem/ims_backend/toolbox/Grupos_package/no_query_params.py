@@ -24,5 +24,5 @@ def no_query_params():
                     })
         r = list(grupos.values())
         return r
-    except:
-        raise InternalServerException
+    except Exception as e:
+        raise InternalServerException(detail=str(e))

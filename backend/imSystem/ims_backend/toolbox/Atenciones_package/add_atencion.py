@@ -112,8 +112,8 @@ def add_atencion(request):
                 transaction.on_commit(lambda:notificacion.delay("AR",fecha=str(despacho.fecha_finalizacion)))
         except ValueError as ve:
             raise exceptions.BadRequestException(detail=str(ve))
-        except:
-            raise exceptions.InternalServerException
+        except Exception as e:
+            raise exceptions.InternalServerException(detail=str(e))
         try:
             file_json = json.dumps(document, ensure_ascii=False, cls=CustomEncoder)
             enviar_s3.delay(file_json, hash_bytes.hex(), base64.b64encode(signature).decode())

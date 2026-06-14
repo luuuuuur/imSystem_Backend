@@ -22,8 +22,8 @@ def specific(valid_data:InsumoIdSerializer):
             }
         }
         return r
-    except:
-        raise exceptions.NotFoundException
+    except Exception as e:
+        raise exceptions.NotFoundException(detail=str(e))
 
 
 
@@ -47,5 +47,5 @@ def all():
                 }
             })
         return r
-    except:
-        raise exceptions.InternalServerException
+    except Exception as e:
+        raise exceptions.InternalServerException(detail=str(e))

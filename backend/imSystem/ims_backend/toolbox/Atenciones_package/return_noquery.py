@@ -21,5 +21,5 @@ def atencion_noquery():
                     }if a.despacho else None
             })
         return response
-    except:
-        raise InternalServerException
+    except Exception as e:
+        raise InternalServerException(detail=str(e))

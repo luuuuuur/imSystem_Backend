@@ -31,3 +31,9 @@ class UnAuthorizedException(APIException):
     status_code = status.HTTP_401_UNAUTHORIZED
     default_detail = 'Not authorized request'
     default_code = 'error'
+
+
+class ForbiddenException(APIException):
+    status_code = status.HTTP_403_FORBIDDEN
+    default_detail = 'Forbidden'
+    default_code = 'error'

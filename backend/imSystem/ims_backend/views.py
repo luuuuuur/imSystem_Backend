@@ -44,7 +44,9 @@ from .toolbox.Inventario_package import add, gets as gets_inventario, update
 from .toolbox.Ambulancia_package import gets as gets_ambulancia, move
 from .utils              import(generate_totp, generate_password)
 from .totp_auth.authentication import authentication
-from ims_backend.toolbox.exceptions import *
+from ims_backend.toolbox.exceptions import (ConflictException, BadRequestException,
+                                              InternalServerException, NotFoundException,
+                                              UnAuthorizedException, ForbiddenException)
 from ims_backend.task_package.task_log_grupos import crear_grupo_log, agregar_miembros_log,actualizar_estado_miembros_log
 from ims_backend.task_package.task_log_paciente import agregar_paciente_log
 from ims_backend.task_package.task_log_despacho import crear_despacho_log, asignar_despacho_log, cambiar_estado_log
@@ -122,9 +124,9 @@ class TokenPOST(APIView):
             valid_data = serializer.validated_data
             try:
                 set_device(request.user.id, valid_data["token"])
-                return Response({'success'}, status=status.HTTP_201_CREATED)
-            except:
-                raise InternalServerException
+                return Response({'success': 'success'}, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                raise InternalServerException(detail=str(e))
         else:
             raise BadRequestException
 #ADMINISTRACION----------------------
@@ -517,7 +519,7 @@ class ProgramarDespacho(APIView):
                     transaction.on_commit(lambda: cambiar_estado_log.delay(data=log_data))
                     transaction.on_commit(lambda: notificacion.delay(type="DP",grupo_id=str(_valid_data["grupo_id"]), fecha=str(_despacho.fecha_programada)))
                 return Response({}, status=status.HTTP_200_OK)
-            except: return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            except Exception as e: return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else: return Response({}, status=status.HTTP_400_BAD_REQUEST)
         
 
@@ -541,12 +543,14 @@ class DespachoASolicitudUsuario(APIView):
 
 # API para retornar las atenciones, recibe parámetros a través de URL
 class RetornarAtencionAPI(APIView):
-    permission_classes=[MFAVerified]
+    permission_classes=[(ControlProfileOnly | MedicProfileOnly | NurseProfileOnly) & MFAVerified]
     http_method_names = ['get']
     def get(self, request):
         if request.query_params:
             r = atencion_with_query(request)
             return Response({'success':f'{r}'}, status=status.HTTP_200_OK)
+        if request.user.rol.nombre_rol != 'control':
+            raise ForbiddenException(detail="Solo el personal de control puede listar todas las atenciones")
         r = atencion_noquery()
         return Response(r, status=status.HTTP_200_OK)
         

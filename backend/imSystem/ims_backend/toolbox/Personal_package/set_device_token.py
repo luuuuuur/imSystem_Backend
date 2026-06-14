@@ -9,5 +9,5 @@ def set_device(user_id,token):
                 defaults={"usuario_id": user_id}
             )
         return True
-    except:
-        raise InternalServerException
+    except Exception as e:
+        raise InternalServerException(detail=str(e))

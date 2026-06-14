@@ -32,5 +32,5 @@ def with_query(request):
             return r
         else:
             raise ValidationError(detail="Error al procesar el grupo_id, tal vez no es válido?")
-    except:
-         raise BadRequestException
+    except Exception as e:
+         raise BadRequestException(detail=str(e))

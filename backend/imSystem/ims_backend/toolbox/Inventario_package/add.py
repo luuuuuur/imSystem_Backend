@@ -33,7 +33,7 @@ def add(request):
                 }
                 transaction.on_commit(lambda:agregar_elemento_log.delay(data=document))
             return True
-        except:
-            raise exceptions.InternalServerException(detail="Fallo al añadir los registros")
+        except Exception as e:
+            raise exceptions.InternalServerException(detail=f"Fallo al añadir los registros: {e}")
     else:
         raise exceptions.BadRequestException(detail="Typos incorrectos")

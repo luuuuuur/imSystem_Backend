@@ -13,10 +13,10 @@ def get_perid(request):
         else:
             raise exceptions.BadRequestException
     else:
-        return exceptions.UnAuthorizedException
+        raise exceptions.UnAuthorizedException
 def get_all():
     try:
         r = inventario.all()
         return r
-    except:
-        raise exceptions.InternalServerException
+    except Exception as e:
+        raise exceptions.InternalServerException(detail=str(e))

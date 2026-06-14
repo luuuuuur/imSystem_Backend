@@ -14,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = secrets_aws["SECRET_KEY"]
 AWS_BUCKET_NAME=secrets_aws["AWS_BUCKET_NAME"]
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = ["api.imsambulancias.cl", "13.216.65.240"]
 
