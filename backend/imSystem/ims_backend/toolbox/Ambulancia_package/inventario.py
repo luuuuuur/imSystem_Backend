@@ -36,7 +36,7 @@ def all():
             'ambulancia',
             'presentacion__insumo__categoria',
             'presentacion__unidad_medida'
-        ).all()
+        ).iterator(chunk_size=100)
         r ={}
         for data in stocks:
             amb_id = data.ambulancia.id

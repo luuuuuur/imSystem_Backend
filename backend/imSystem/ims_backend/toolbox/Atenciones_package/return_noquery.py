@@ -3,7 +3,7 @@ from ims_backend.toolbox.exceptions import InternalServerException
 
 def atencion_noquery():
     try:
-        atencion = Atencion.objects.select_related('despacho__paciente').all()
+        atencion = Atencion.objects.select_related('despacho__paciente').iterator(chunk_size=100)
         response = []
         for a in atencion:
             response.append({

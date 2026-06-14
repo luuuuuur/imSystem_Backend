@@ -6,7 +6,7 @@ def no_query_params():
         grupos = {}
         suscripciones = SuscritosAGrupo.objects.filter(
                     fecha_salida=None
-                ).select_related('grupo', 'personal', 'personal__rol')
+                ).select_related('grupo', 'personal', 'personal__rol').iterator(chunk_size=100)
         for suscripcion in suscripciones:
             grupo_id = suscripcion.grupo.id
             if grupo_id not in grupos:

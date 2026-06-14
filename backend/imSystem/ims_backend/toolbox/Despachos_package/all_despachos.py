@@ -1,6 +1,7 @@
 from ims_backend.models import DespachoPersonal, Despacho, SuscritosAGrupo
 from ims_backend.serializers import ObtenerDespachoSerializer
 from ims_backend.toolbox import exceptions
+from django.db.models import Prefetch
 
 def all_despachos(request):
         if request.query_params:
@@ -47,22 +48,34 @@ def all_despachos(request):
             else:
                 raise exceptions.NotFoundException(detail="El despacho no fue encontrado")
         else:
+            _members_qs = SuscritosAGrupo.objects.filter(
+                fecha_salida=None
+            ).select_related('personal__rol')
+
+            _equipo_qs = DespachoPersonal.objects.select_related('grupo').prefetch_related(
+                Prefetch('grupo__grupo_nombre', queryset=_members_qs, to_attr='miembros_activos')
+            )
+
             despachos = Despacho.objects.exclude(
                     estado__in=['finalizado', 'cancelado']
-                ).select_related('ambulancia', 'creado_por', 'asignado_por','atencion','paciente')
+                ).select_related('ambulancia', 'creado_por', 'asignado_por','atencion','paciente').prefetch_related(
+                Prefetch('equipo', queryset=_equipo_qs, to_attr='equipo_prefetch')
+            )
             resultado = []
             for d in despachos:
-                dp = DespachoPersonal.objects.filter(despacho=d).first()
+                dp = d.equipo_prefetch[0] if d.equipo_prefetch else None
                 personal = []
                 if dp:
-                    personal = list(SuscritosAGrupo.objects.filter(
-                        grupo=dp.grupo,
-                        fecha_salida=None
-                    ).values(
-                        'personal__id', 'personal__first_name',
-                        'personal__last_name', 'personal__rut',
-                        'personal__rol__nombre_rol'
-                    ))
+                    personal = [
+                        {
+                            'personal__id': m.personal.id,
+                            'personal__first_name': m.personal.first_name,
+                            'personal__last_name': m.personal.last_name,
+                            'personal__rut': m.personal.rut,
+                            'personal__rol__nombre_rol': m.personal.rol.nombre_rol if m.personal.rol else None
+                        }
+                        for m in dp.grupo.miembros_activos
+                    ]
                 
                 resultado.append({
                     'id': d.id,

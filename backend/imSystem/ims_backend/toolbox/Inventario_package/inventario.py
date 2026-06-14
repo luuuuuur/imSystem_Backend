@@ -29,7 +29,7 @@ def specific(valid_data:InsumoIdSerializer):
 
 def all():
     try:
-        presentacion = StockInsumo.objects.select_related('presentacion__insumo__categoria', 'presentacion__unidad_medida', 'ambulancia').all()
+        presentacion = StockInsumo.objects.select_related('presentacion__insumo__categoria', 'presentacion__unidad_medida', 'ambulancia').iterator(chunk_size=100)
         r = []
         for data in presentacion:
             r.append({
