@@ -6,6 +6,7 @@ urlpatterns = [
     path("api/token/post/", TokenPOST.as_view(), name="TokenPOST"),
     path("api/personal/", GetPersonal.as_view(), name="DataPersonal"),
     path("api/personal/add/",AddPersonal.as_view(), name="AddPersonal"),
+    path("api/personal/delete/", DeletePersonal.as_view(), name="DeletePersonal"),
     path("api/pacientes/add/", RegistrosPacientesAPI.as_view(), name="RegistroPacientesAPI"),
     path("api/pacientes/get/", GetPacientes.as_view(), name="GetPacientes"),
     path("api/grupo/", GruposObtener.as_view(), name="GruposObtener"),

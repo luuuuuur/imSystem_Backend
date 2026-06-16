@@ -34,6 +34,7 @@ from .models import RolPersonal
 from .models import Despacho
 from .models import Ambulancia
 from .models import DespachoPersonal
+from .models import LogAuditoria
 # ─── LOCAL / AWS ─────────────────────────────────────────────────────────────
 from ims_backend.toolbox.Atenciones_package.add_atencion import add_atencion
 from ims_backend.toolbox.Atenciones_package.return_noquery import atencion_noquery
@@ -235,6 +236,40 @@ class AddPersonal(APIView):
             except Exception as e:
                 return Response({'error': f'failed to generate the uri and user data + {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DeletePersonal(APIView):
+    http_method_names = ['delete']
+    permission_classes = [MFAVerified & ControlProfileOnly]
+
+    def delete(self, request):
+        personal_id = request.query_params.get('personal_id')
+        if not personal_id:
+            return Response({'error': 'personal_id requerido'}, status=status.HTTP_400_BAD_REQUEST)
+
+        personal = get_object_or_404(Personal, id=personal_id)
+
+        if personal.pk == request.user.pk:
+            return Response({'error': 'No puedes eliminarte a ti mismo'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with transaction.atomic():
+                suscripciones_eliminadas = SuscritosAGrupo.objects.filter(personal=personal).delete()[0]
+                LogAuditoria.objects.filter(usuario=personal).delete()
+                rut = personal.rut
+                nombre = personal.get_full_name()
+                personal.delete()
+
+            return Response({
+                'success': f'Personal {nombre} ({rut}) eliminado',
+                'suscripciones_eliminadas': suscripciones_eliminadas,
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {'error': f'No se puede eliminar: tiene registros asociados protegidos. Detalle: {str(e)}'},
+                status=status.HTTP_409_CONFLICT,
+            )
 
 
 # ─── TODO ─────────────────────────────────────────────────────────────────────
