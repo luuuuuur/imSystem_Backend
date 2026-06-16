@@ -464,7 +464,7 @@ class GetPacientes(APIView):
 # API para CREAR los despachos
 class CreateDespacho(APIView):
     http_method_names = ['post']
-    permission_classes = [AllowAny]
+    #permission_classes = [AllowAny]
     def post(self, request):
         serializer = CreateDespachoSerializer(data=request.data)
         if serializer.is_valid():
