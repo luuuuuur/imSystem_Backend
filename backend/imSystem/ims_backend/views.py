@@ -464,7 +464,7 @@ class GetPacientes(APIView):
 # API para CREAR los despachos
 class CreateDespacho(APIView):
     http_method_names = ['post']
-    #permission_classes = [AllowAny]
+    permission_classes = [ControlProfileOnly & MFAVerified]
     def post(self, request):
         serializer = CreateDespachoSerializer(data=request.data)
         if serializer.is_valid():
@@ -482,7 +482,7 @@ class CreateDespacho(APIView):
                         direccion_destino=valid_data['direccion_destino'],
                         descripcion_llamado=valid_data['descripcion_llamado'],
                         paciente = paciente,
-                        creado_por= "test_prueba_concurrencia",#request.user,
+                        creado_por= request.user,
                         estado=Despacho.RECIBIDO
                     )
                     log_data["despacho_id"]=despacho.id
