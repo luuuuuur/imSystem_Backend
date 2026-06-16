@@ -4,7 +4,7 @@ from rest_framework.response    import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import status
 # ─── DJANGO ──────────────────────────────────────────────────────────────────
-from django.contrib.auth            import authenticate, login
+from django.contrib.auth            import authenticate, login, logout as django_logout
 from django.shortcuts               import get_object_or_404
 from django.utils                   import timezone
 from django.db                      import transaction
@@ -35,6 +35,8 @@ from .models import Despacho
 from .models import Ambulancia
 from .models import DespachoPersonal
 from .models import LogAuditoria
+from .models import Atencion
+from .models import Documento
 # ─── LOCAL / AWS ─────────────────────────────────────────────────────────────
 from ims_backend.toolbox.Atenciones_package.add_atencion import add_atencion
 from ims_backend.toolbox.Atenciones_package.return_noquery import atencion_noquery
@@ -116,6 +118,15 @@ class Login(EnsureCsrfMixin, APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 #TOKEN DEVICE
 #/api/token/post/
+class Logout(APIView):
+    http_method_names = ['post']
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        django_logout(request)
+        return Response({}, status=status.HTTP_200_OK)
+
+
 class TokenPOST(APIView):
     http_method_names= ['post']
     permission_classes = [MFAVerified]
@@ -256,6 +267,12 @@ class DeletePersonal(APIView):
             with transaction.atomic():
                 Despacho.objects.filter(creado_por=personal).update(creado_por=None)
                 Despacho.objects.filter(asignado_por=personal).update(asignado_por=None)
+
+                atenciones = Atencion.objects.filter(rut_registrador=personal)
+                LogAuditoria.objects.filter(atencion__in=atenciones).update(atencion=None)
+                Documento.objects.filter(atencion__in=atenciones).delete()
+                atenciones_eliminadas = atenciones.delete()[0]
+
                 suscripciones_eliminadas = SuscritosAGrupo.objects.filter(personal=personal).delete()[0]
                 LogAuditoria.objects.filter(usuario=personal).delete()
                 rut = personal.rut
@@ -265,6 +282,7 @@ class DeletePersonal(APIView):
             return Response({
                 'success': f'Personal {nombre} ({rut}) eliminado',
                 'suscripciones_eliminadas': suscripciones_eliminadas,
+                'atenciones_eliminadas': atenciones_eliminadas,
             }, status=status.HTTP_200_OK)
 
         except Exception as e:

@@ -3,6 +3,7 @@ from .views import *
 urlpatterns = [
     path("api/auth/", Authenticate.as_view(), name="Authenticate"),
     path("api/login/", Login.as_view(), name="Login"),
+    path("api/logout/", Logout.as_view(), name="Logout"),
     path("api/token/post/", TokenPOST.as_view(), name="TokenPOST"),
     path("api/personal/", GetPersonal.as_view(), name="DataPersonal"),
     path("api/personal/add/",AddPersonal.as_view(), name="AddPersonal"),

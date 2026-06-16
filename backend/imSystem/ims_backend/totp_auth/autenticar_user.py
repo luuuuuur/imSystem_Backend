@@ -18,7 +18,7 @@ def iniciar_sesion(request, data):
         raise UnAuthorizedException(detail="Código TOTP incorrecto")
     
     login(request, user_data)
-    del request.session['pre_auth_user_id']
+    request.session.pop('pre_auth_user_id', None)
     request.session['mfa_verified'] = True
     request.session.save()
     
