@@ -248,7 +248,7 @@ class AddPersonal(APIView):
                 return Response({'error': f'failed to generate the uri and user data + {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
+#Adaptar a solo desactivar pero no borrar registros del personal 
 class DeletePersonal(APIView):
     http_method_names = ['delete']
     permission_classes = [MFAVerified & ControlProfileOnly]
@@ -292,8 +292,6 @@ class DeletePersonal(APIView):
             )
 
 
-# ─── TODO ─────────────────────────────────────────────────────────────────────
-# #TODO: Creación de la API de notificaciones -> SSE
 
 # API para REGISTRAR las atenciones post-despacho y subir los documentos firmados al S3
 class RegistroAtencionAPI(APIView):
@@ -466,7 +464,7 @@ class GetPacientes(APIView):
 # API para CREAR los despachos
 class CreateDespacho(APIView):
     http_method_names = ['post']
-    permission_classes = [ControlProfileOnly & MFAVerified]
+    permission_classes = [AllowAny]
     def post(self, request):
         serializer = CreateDespachoSerializer(data=request.data)
         if serializer.is_valid():
