@@ -16,7 +16,7 @@ AWS_BUCKET_NAME=secrets_aws["AWS_BUCKET_NAME"]
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ["api.imsambulancias.cl", "13.216.65.240"]
+ALLOWED_HOSTS = ["api.imsambulancias.cl", "app.imsambulancias.cl", "13.216.65.240"]
 
 
 # Application definition
@@ -73,11 +73,13 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8081",
     "http://127.0.0.1:8081",
     "https://api.imsambulancias.cl",
+    "https://app.imsambulancias.cl",
 ]
 CORS_ALLOW_CREDENTIALS=True
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8081",
     "https://api.imsambulancias.cl",
+    "https://app.imsambulancias.cl",
 ]
 
 # Database

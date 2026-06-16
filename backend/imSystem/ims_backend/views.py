@@ -254,6 +254,8 @@ class DeletePersonal(APIView):
 
         try:
             with transaction.atomic():
+                Despacho.objects.filter(creado_por=personal).update(creado_por=None)
+                Despacho.objects.filter(asignado_por=personal).update(asignado_por=None)
                 suscripciones_eliminadas = SuscritosAGrupo.objects.filter(personal=personal).delete()[0]
                 LogAuditoria.objects.filter(usuario=personal).delete()
                 rut = personal.rut
