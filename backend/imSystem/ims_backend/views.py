@@ -525,8 +525,9 @@ class AsignarDespacho(APIView):
                 }
                 if DespachoPersonal.objects.filter(despacho=_despacho, grupo=grupo_nombre).exists():
                     return Response({'error': 'Este grupo ya está asignado a este despacho'}, status=status.HTTP_409_CONFLICT)
+                tipo_estado = Despacho.EMERGENCIA if valid_data["is_emergency"] else Despacho.ASIGNADO
                 with transaction.atomic():
-                    change_despacho_status(type=Despacho.ASIGNADO, despacho=_despacho, fecha_prog=None)
+                    change_despacho_status(type=tipo_estado, despacho=_despacho, fecha_prog=None)
                     _despacho.ambulancia=amb
                     _despacho.asignado_por = request.user
                     _despacho.save(update_fields=["ambulancia","asignado_por"])

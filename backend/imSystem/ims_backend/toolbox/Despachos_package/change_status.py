@@ -7,6 +7,10 @@ def change_despacho_status(type, despacho: Despacho,fecha_prog=None):
                 despacho.fecha_asignacion = timezone.now()
                 despacho.estado = Despacho.ASIGNADO
                 despacho.save(update_fields=["estado", "fecha_asignacion"])
+        case Despacho.EMERGENCIA:
+                despacho.fecha_asignacion = timezone.now()
+                despacho.estado = Despacho.EMERGENCIA
+                despacho.save(update_fields=["estado", "fecha_asignacion"])
         case Despacho.FINALIZADO:
                 despacho.fecha_finalizacion = timezone.now()
                 despacho.estado = Despacho.FINALIZADO
