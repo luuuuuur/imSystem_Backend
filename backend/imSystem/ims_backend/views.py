@@ -482,7 +482,7 @@ class CreateDespacho(APIView):
                         direccion_destino=valid_data['direccion_destino'],
                         descripcion_llamado=valid_data['descripcion_llamado'],
                         paciente = paciente,
-                        creado_por=request.user,
+                        creado_por= "test_prueba_concurrencia",#request.user,
                         estado=Despacho.RECIBIDO
                     )
                     log_data["despacho_id"]=despacho.id
