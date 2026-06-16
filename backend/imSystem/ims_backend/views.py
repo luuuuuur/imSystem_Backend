@@ -61,6 +61,7 @@ from ims_backend.toolbox.Grupos_package.get_with_query import with_query
 from ims_backend.toolbox.Despachos_package.change_status import change_despacho_status
 from ims_backend.task_package.task_notificaciones import notificacion
 from ims_backend.toolbox.Personal_package.set_device_token import set_device
+
 # =============================================================================
 # PERMISOS PERSONALIZADOS
 # =============================================================================
@@ -487,6 +488,7 @@ class CreateDespacho(APIView):
                     )
                     log_data["despacho_id"]=despacho.id
                     transaction.on_commit(lambda: crear_despacho_log.delay(data=log_data))
+                    transaction.on_commit(lambda: change_despacho_status(type=Despacho.RECIBIDO, despacho=despacho))
                 return Response({'success':'success', 
                                  'despacho':
                                  {'id':despacho.id, 
