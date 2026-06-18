@@ -278,7 +278,7 @@ class Notificacion(models.Model):
     def __str__(self):
         return f"Notif {self.tipo} para {self.destinatario}"
 
-
+#UNUSED
 class TicketCredencial(models.Model):
     ESTADOS = [
         ('pendiente', 'Pendiente'),
@@ -328,7 +328,6 @@ class LogAuditoria(models.Model):
     rut_usuario = models.CharField(max_length=12)
     descripcion = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
-    
 
 class DeviceToken(models.Model):
     device_token = models.CharField(max_length=255, null=False, blank=False, unique=True)

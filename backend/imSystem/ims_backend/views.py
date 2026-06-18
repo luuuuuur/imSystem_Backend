@@ -4,7 +4,7 @@ from rest_framework.response    import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import status
 # ─── DJANGO ──────────────────────────────────────────────────────────────────
-from django.contrib.auth            import authenticate, login, logout as django_logout
+from django.contrib.auth            import logout as django_logout
 from django.shortcuts               import get_object_or_404
 from django.utils                   import timezone
 from django.db                      import transaction
@@ -46,7 +46,6 @@ from ims_backend.toolbox.Despachos_package.solicitud_usuario import solicitud_us
 from .toolbox.Inventario_package import add, gets as gets_inventario, update
 from .toolbox.Ambulancia_package import gets as gets_ambulancia, move
 from .utils              import(generate_totp, generate_password)
-from .totp_auth.authentication import authentication
 from ims_backend.toolbox.exceptions import (ConflictException, BadRequestException,
                                               InternalServerException, NotFoundException,
                                               UnAuthorizedException, ForbiddenException)
@@ -54,7 +53,6 @@ from ims_backend.task_package.task_log_grupos import crear_grupo_log, agregar_mi
 from ims_backend.task_package.task_log_paciente import agregar_paciente_log
 from ims_backend.task_package.task_log_despacho import crear_despacho_log, asignar_despacho_log, cambiar_estado_log
 from ims_backend.task_package.task_log_personal import agregar_personal_log
-from ims_backend.toolbox.Logs_package.chunks_get import get_by_chunks
 from ims_backend.toolbox.Fhir_package.export_r4 import export_hl7
 from ims_backend.toolbox.Grupos_package.no_query_params import no_query_params
 from ims_backend.toolbox.Grupos_package.get_with_query import with_query
@@ -609,16 +607,6 @@ class RetornarAtencionAPI(APIView):
             raise ForbiddenException(detail="Solo el personal de control puede listar todas las atenciones")
         r = atencion_noquery()
         return Response(r, status=status.HTTP_200_OK)
-        
-
-
-class LogsAPI(APIView):
-    http_method_names = ['get']
-    permission_classes = [ControlProfileOnly & MFAVerified]
-
-    def get(self, request):
-       return get_by_chunks()
-
 
 class FHIR(APIView):
     permission_classes = [ControlProfileOnly & MFAVerified]

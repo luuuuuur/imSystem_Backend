@@ -1,5 +1,14 @@
 from django.urls import path
+from rest_framework.routers import DefaultRouter
 from .views import *
+
+#VIEWSETS
+from ims_backend.toolbox.Paginators.logPaginator import LogViewSet
+router = DefaultRouter()
+#VIEWSET REGISTER
+router.register(r'api/logs', LogViewSet,basename='logs')
+
+
 urlpatterns = [
     path("api/auth/", Authenticate.as_view(), name="Authenticate"),
     path("api/login/", Login.as_view(), name="Login"),
@@ -26,6 +35,7 @@ urlpatterns = [
     path("api/inv/add/", AddInsumoAPI.as_view(), name="AddInsumoAPI"),
     path("api/inv/move/", MoveInsumoAPI.as_view(), name="MoveInsumoAPI"),
     path("api/inv/update/", UpdateStockAPI.as_view(), name="UpdateStockAPI"),
-    path("api/fhir/", FHIR.as_view(), name="FHIR"),
-    path("api/logs/", LogsAPI.as_view(), name="LogsAPI")
+    path("api/fhir/", FHIR.as_view(), name="FHIR")
 ]
+#ADD VIEWSET TO URLPATTERNS
+urlpatterns += router.urls

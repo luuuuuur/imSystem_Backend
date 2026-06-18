@@ -40,4 +40,4 @@ celery==5.6.3
 gevent==26.5.0
 psycogreen==1.0.2
 redis==8.0.0
-
+django-cursor-pagination

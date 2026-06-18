@@ -5,7 +5,7 @@ from rest_framework import serializers
 # ---- MODELS ----
 from .models import (
     Ambulancia, Personal, Atencion, GrupoPersonal, SuscritosAGrupo, SignosVitales, PreInforme,
-    Cronologia
+    Cronologia, LogAuditoria
 )
 
 
@@ -17,7 +17,10 @@ class PersonalSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'first_name', 'last_name', 'rut', 'is_active', 'rol_nombre']
         read_only_fields = ['username', 'rol_nombre']
 
-
+class LogAuditoriaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model= LogAuditoria
+        fields=["id","tipo", "atencion_id", "usuario", "rut", "descripcion", "created_at"]
 class PacienteSerializer(serializers.Serializer):
     rut              = serializers.CharField()
     nombre_completo  = serializers.CharField(required=False, default='')
