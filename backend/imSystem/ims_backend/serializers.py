@@ -20,7 +20,7 @@ class PersonalSerializer(serializers.ModelSerializer):
 class LogAuditoriaSerializer(serializers.ModelSerializer):
     class Meta:
         model= LogAuditoria
-        fields=["id","tipo", "atencion_id", "usuario", "rut", "descripcion", "created_at"]
+        fields=["id","tipo", "atencion_id", "usuario", "rut_usuario", "descripcion", "timestamp"]
 class PacienteSerializer(serializers.Serializer):
     rut              = serializers.CharField()
     nombre_completo  = serializers.CharField(required=False, default='')
