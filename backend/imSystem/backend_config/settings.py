@@ -70,6 +70,7 @@ WSGI_APPLICATION = 'backend_config.wsgi.application'
 #CORS
 CORS_ALLOW_ALL_ORIGINS=False
 CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
     "http://localhost:8081",
     "http://127.0.0.1:8081",
     "https://api.imsambulancias.cl",
@@ -77,6 +78,7 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS=True
 CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
     "http://localhost:8081",
     "https://api.imsambulancias.cl",
     "https://app.imsambulancias.cl",
