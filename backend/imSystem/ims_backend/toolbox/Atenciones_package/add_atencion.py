@@ -108,17 +108,16 @@ def add_atencion(request):
                     atencion=atencion
                 )
                 change_despacho_status(type=Despacho.FINALIZADO,despacho=despacho)
-                transaction.on_commit(lambda:agregar_log_atencion.delay(documento=document))
-                transaction.on_commit(lambda:notificacion.delay(Atencion.REGISTRADA,fecha=str(despacho.fecha_finalizacion)))
+                file_json = json.dumps(document, ensure_ascii=False, cls=CustomEncoder)
+                sig_b64   = base64.b64encode(signature).decode()
+                hash_hex  = hash_bytes.hex()
+                transaction.on_commit(lambda: enviar_s3.delay(file_json, hash_hex, sig_b64))
+                transaction.on_commit(lambda: agregar_log_atencion.delay(documento=document))
+                transaction.on_commit(lambda: notificacion.delay(Atencion.REGISTRADA, fecha=str(despacho.fecha_finalizacion)))
         except ValueError as ve:
             raise exceptions.BadRequestException(detail=str(ve))
         except Exception as e:
             raise exceptions.InternalServerException(detail=str(e))
-        try:
-            file_json = json.dumps(document, ensure_ascii=False, cls=CustomEncoder)
-            enviar_s3.delay(file_json, hash_bytes.hex(), base64.b64encode(signature).decode())
-            return {"success": "Succeeded", "hash": hash_bytes.hex()}
-        except Exception:
-            raise exceptions.InternalServerException(detail="Failed to upload to S3")
+        return {"success": "Succeeded", "hash": hash_bytes.hex()}
     else:
         raise exceptions.BadRequestException(detail=serializer.errors)
