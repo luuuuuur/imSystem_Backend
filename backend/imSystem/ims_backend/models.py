@@ -69,11 +69,11 @@ class Paciente(models.Model):
 
 
 class Ambulancia(models.Model):
-    DISPONIBLE = 'Ambulancia prepara para ser usada'
-    TRABAJANDO = 'Ambulancia se encuentra operando'
-    ENPREPARACION = 'Ambulancia está realizando actividades previas para poder operar con normalidad'
-    MANTENCION = 'Ambulancia se encuentra en mantención'
-    NO_SERVICE = 'Ambulancia fuera de Servicio'
+    DISPONIBLE = 'Lista para un nuevo despacho'
+    TRABAJANDO = 'Actualmente en despacho'
+    ENPREPARACION = 'Preparación previa para operar'
+    MANTENCION = 'En mantención'
+    NO_SERVICE = 'Fuera de servicio temporalmente'
     ESTADOS = [
         (DISPONIBLE, 'Disponible'),
         (TRABAJANDO, 'En despacho'),
