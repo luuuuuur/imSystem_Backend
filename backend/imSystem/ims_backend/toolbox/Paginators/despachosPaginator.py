@@ -1,9 +1,8 @@
-from rest_framework.pagination import CursorPagination
-from rest_framework.viewsets import ReadOnlyModelViewSet
 from django.db.models import Prefetch
 from ims_backend.models import Despacho, DespachoPersonal, SuscritosAGrupo
 from ims_backend.serializers import DespachoListSerializer
-from ims_backend.auth_package.permissions import ControlProfileOnly, MFAVerified
+from ims_backend.auth_package.permissions import MFAAndAnyProfile
+from ims_backend.toolbox.Paginators import BaseReadViewSet
 
 _members_qs = SuscritosAGrupo.objects.filter(
     fecha_salida=None
@@ -16,20 +15,13 @@ _equipo_qs = DespachoPersonal.objects.select_related('grupo').prefetch_related(
 # Derived at import time from the model — stays in sync with Despacho.ESTADOS automatically
 _VALID_ESTADOS = {value for value, _ in Despacho.ESTADOS}
 
-class StandarPaginator(CursorPagination):
-    page_size = 10
-    page_size_query_param = 'page_size'
-    max_page_size = 10
-    ordering = '-id'
 
-class DespachoViewSet(ReadOnlyModelViewSet):
+class DespachoViewSet(BaseReadViewSet):
     queryset = Despacho.objects.select_related('paciente').prefetch_related(
         Prefetch('equipo', queryset=_equipo_qs, to_attr='equipo_prefetch')
     ).order_by('-id')
     serializer_class = DespachoListSerializer
-    pagination_class = StandarPaginator
-    http_method_names = ['get']
-    permission_classes = [MFAVerified & ControlProfileOnly]
+    permission_classes = [MFAAndAnyProfile]
 
     def get_queryset(self):
         qs = super().get_queryset()

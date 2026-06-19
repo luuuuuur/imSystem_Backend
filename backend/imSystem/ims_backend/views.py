@@ -67,7 +67,8 @@ from ims_backend.toolbox.Personal_package.set_device_token import set_device
 # Permiso custom: restringe acceso a usuarios con rol control
 # Usar en vistas donde solo personal de control debe operar (como por ejemplo asignar trabajores, despachos etc)
 from ims_backend.auth_package.permissions import (ControlProfileOnly,
-                                                  NurseProfileOnly, MedicProfileOnly, MFAVerified, DriverProfileOnly)
+                                                  NurseProfileOnly, MedicProfileOnly, MFAVerified, DriverProfileOnly,
+                                                  MFAAndAnyProfile, MFAAndClinicalProfile, MFAAndMedicalStaff)
 
 # =============================================================================
 # UTILIDADES
@@ -177,7 +178,7 @@ class MoveInsumoAPI(APIView):
 # API para OBTENER las ambulancias
 class AmbulanciaAPI(APIView):
     http_method_names = ['get']
-    permission_classes = [(ControlProfileOnly | MedicProfileOnly | NurseProfileOnly | DriverProfileOnly) & MFAVerified]
+    permission_classes = [MFAAndAnyProfile]
 
     def get(self, request):
         if request.query_params:
@@ -190,7 +191,7 @@ class AmbulanciaAPI(APIView):
 # API para obtener los datos del personal
 class GetPersonal(APIView):
     http_method_names = ['get']
-    permission_classes = [MFAVerified & (MedicProfileOnly | NurseProfileOnly | DriverProfileOnly | ControlProfileOnly)]
+    permission_classes = [MFAAndAnyProfile]
     def get(self, request):
         personal_activo = Personal.objects.filter(is_active=True).select_related('rol')
         serializer = PersonalSerializer(personal_activo, many=True)
@@ -295,7 +296,7 @@ class DeletePersonal(APIView):
 # API para REGISTRAR las atenciones post-despacho y subir los documentos firmados al S3
 class RegistroAtencionAPI(APIView):
     http_method_names = ['post']
-    permission_classes = [(NurseProfileOnly | MedicProfileOnly) & MFAVerified]
+    permission_classes = [MFAAndMedicalStaff]
     def post(self,request):
         result = add_atencion(request)
         return Response(result, status=status.HTTP_201_CREATED)
@@ -597,7 +598,7 @@ class DespachoASolicitudUsuario(APIView):
 
 # API para retornar las atenciones, recibe parámetros a través de URL
 class RetornarAtencionAPI(APIView):
-    permission_classes=[(ControlProfileOnly | MedicProfileOnly | NurseProfileOnly) & MFAVerified]
+    permission_classes = [MFAAndClinicalProfile]
     http_method_names = ['get']
     def get(self, request):
         if request.query_params:
