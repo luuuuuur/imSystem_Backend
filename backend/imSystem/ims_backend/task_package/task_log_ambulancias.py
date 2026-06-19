@@ -30,7 +30,7 @@ def agregar_elemento_log(self, data):
 def actualizar_estados(self, conid, ambid):
     try:
         personal = Personal.objects.get(id = conid)
-        ambulancia = Ambulancia.objects.get(ambid)
+        ambulancia = Ambulancia.objects.get(id=ambid)
         log = f"El usuario: {personal.id} actualizó el estado de la ambulancia: {ambulancia.patente} a -> {ambulancia.estado_disponibilidad}"
         LogAuditoria.objects.create(
             tipo="ambulancia", usuario_id = personal.id, rut_usuario= personal.rut, descripcion=log

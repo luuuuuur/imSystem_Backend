@@ -26,13 +26,13 @@ def cambiar_estado(request):
     serializer = CambiarEstadoAmbulancia(data=request.query_params)
     if serializer.is_valid():
         valid_data = serializer.validated_data
-        personal = Personal.objects.get(id=valid_data["conid"])
-        ambulancia = Ambulancia.objects.get(id=valid_data["ambid"])
-        estado = valid_data["estado"]
         try:
+            personal = Personal.objects.get(id=valid_data["conid"])
+            ambulancia = Ambulancia.objects.get(id=valid_data["ambid"])
+            estado = valid_data["estado"]
             with transaction.atomic():
                 change_despacho_status(estado, ambulancia)
-            transaction.on_commit(lambda: notificacion.delay(type=estado,patente=ambulancia.patente, estado=estado, id=personal.id))
+            transaction.on_commit(lambda: notificacion.delay(type=estado, patente=ambulancia.patente, estado=estado, id=personal.id))
             transaction.on_commit(lambda: actualizar_estados.delay(conid=personal.id, ambid=ambulancia.id))
             return True
         except Exception:
