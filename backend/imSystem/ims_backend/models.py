@@ -69,11 +69,17 @@ class Paciente(models.Model):
 
 
 class Ambulancia(models.Model):
+    DISPONIBLE = 'Ambulancia prepara para ser usada'
+    TRABAJANDO = 'Ambulancia se encuentra operando'
+    ENPREPARACION = 'Ambulancia está realizando actividades previas para poder operar con normalidad'
+    MANTENCION = 'Ambulancia se encuentra en mantención'
+    NO_SERVICE = 'Ambulancia fuera de Servicio'
     ESTADOS = [
-        ('disponible', 'Disponible'),
-        ('en_despacho', 'En despacho'),
-        ('mantencion', 'Mantención'),
-        ('fuera_servicio', 'Fuera de servicio'),
+        (DISPONIBLE, 'Disponible'),
+        (TRABAJANDO, 'En despacho'),
+        (MANTENCION, 'Mantención'),
+        (NO_SERVICE, 'Fuera de servicio'),
+        (ENPREPARACION,'Está siendo preparada para operar')
     ]
 
     patente = models.CharField(max_length=10, unique=True)

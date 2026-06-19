@@ -44,7 +44,7 @@ from ims_backend.toolbox.Atenciones_package.return_with_query import atencion_wi
 from ims_backend.toolbox.Despachos_package.all_despachos import all_despachos
 from ims_backend.toolbox.Despachos_package.solicitud_usuario import solicitud_usuario
 from .toolbox.Inventario_package import add, gets as gets_inventario, update
-from .toolbox.Ambulancia_package import gets as gets_ambulancia, move
+from .toolbox.Ambulancia_package import gets as gets_ambulancia, move,cambiar_estado
 from .utils              import(generate_totp, generate_password)
 from ims_backend.toolbox.exceptions import (ConflictException, BadRequestException,
                                               InternalServerException, NotFoundException,
@@ -616,3 +616,10 @@ class FHIR(APIView):
             return Response(data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class CambiarEstadoAmbulancia(APIView):
+    http_method_names = ['patch']
+    permission_classes = [MFAVerified & DriverProfileOnly]
+    def patch(self, request):
+        if cambiar_estado(request):
+            return Response({}, status=status.HTTP_200_OK)

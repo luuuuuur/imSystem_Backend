@@ -3,7 +3,7 @@ from celery import shared_task
 from firebase_admin import messaging
 from ims_backend.aws_package.secrets_manager import Secrets_API
 import firebase_admin
-from ims_backend.models import DeviceToken, Despacho, Atencion
+from ims_backend.models import DeviceToken, Despacho, Atencion, Ambulancia
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,13 @@ def _enviar_despacho_emergencia(dir, grupo_id):
     )
     logger.info(f'[FCM] emergencia: grupo_id={grupo_id}, dir={dir}, tokens={len(token)}')
     _send(token=token, _title="Emergencia", _body=f"Se te ha llamado por una situación de emergencia, favor de dirigirse a la siguiente direccion lo antes posible: {dir}")
-
+def _enviar_estado_ambulancia(patente, estado, id):
+    token = list(DeviceToken.objects.filter(
+        usuario__rol__nombre_rol='control',
+        usuario__is_active=True
+    ).values_list('device_token', flat=True))
+    logger.info(f'[FCM] Estado ambulancia: Se cambio el estado de: {patente}, tokens={len(token)}')
+    _send(token=token, _title="Ambulancia", _body=f"la persona: {id}, ambulancia con patente: {patente} ha cambiado a: {estado}")
 @shared_task(bind=True, max_retries=5, default_retry_delay=60)
 def notificacion(self, type, **kwargs):
     try:
@@ -82,6 +88,16 @@ def notificacion(self, type, **kwargs):
                 _enviar_atencion_registrada(kwargs["fecha"])
             case Despacho.EMERGENCIA:
                 _enviar_despacho_emergencia(kwargs["dir"], kwargs["grupo_id"])
+            case Ambulancia.DISPONIBLE:
+                _enviar_estado_ambulancia(kwargs["patente"], kwargs["estado"], kwargs["id"])
+            case Ambulancia.ENPREPARACION:
+                _enviar_estado_ambulancia(kwargs["patente"], kwargs["estado"], kwargs["id"])
+            case Ambulancia.TRABAJANDO:
+                _enviar_estado_ambulancia(kwargs["patente"], kwargs["estado"], kwargs["id"])
+            case Ambulancia.MANTENCION:
+                _enviar_estado_ambulancia(kwargs["patente"], kwargs["estado"], kwargs["id"])
+            case Ambulancia.NO_SERVICE:
+                _enviar_estado_ambulancia(kwargs["patente"], kwargs["estado"], kwargs["id"])    
             case _:
                 logger.warning(f'[FCM] Tipo de notificacion no reconocido: {type}')
                 return
