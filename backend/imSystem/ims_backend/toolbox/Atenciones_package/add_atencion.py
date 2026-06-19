@@ -109,7 +109,7 @@ def add_atencion(request):
                 )
                 change_despacho_status(type=Despacho.FINALIZADO,despacho=despacho)
                 transaction.on_commit(lambda:agregar_log_atencion.delay(documento=document))
-                transaction.on_commit(lambda:notificacion.delay("AR",fecha=str(despacho.fecha_finalizacion)))
+                transaction.on_commit(lambda:notificacion.delay(Atencion.REGISTRADA,fecha=str(despacho.fecha_finalizacion)))
         except ValueError as ve:
             raise exceptions.BadRequestException(detail=str(ve))
         except Exception as e:
