@@ -6,16 +6,16 @@ from django.shortcuts import get_object_or_404
 from ims_backend.utils import get_s3_download_url
 from botocore.exceptions import ClientError
 
-def atencion_with_query(request):
-    serializer = ParamAtencionSerializer(data=request.query_params)
+def atencion_with_query(query_params, user):
+    serializer = ParamAtencionSerializer(data=query_params)
     if serializer.is_valid():
         valid_data=serializer.validated_data
         try:
             atencion = get_object_or_404(Atencion.objects.prefetch_related('documentos'), id=valid_data['id'])
 
-            if request.user.rol.nombre_rol != 'control':
+            if user.rol.nombre_rol != 'control':
                 user_groups = SuscritosAGrupo.objects.filter(
-                    personal=request.user
+                    personal=user
                 ).values_list('grupo_id', flat=True)
 
                 if not atencion.despacho or not DespachoPersonal.objects.filter(

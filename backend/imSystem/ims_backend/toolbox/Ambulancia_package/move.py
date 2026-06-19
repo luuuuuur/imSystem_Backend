@@ -11,8 +11,8 @@ from ims_backend.toolbox.exceptions import BadRequestException, InternalServerEx
 
 
 #Mover item de ambulancia A -> B
-def move_item(request):
-    serializer = MoveItemSerializer(data=request.data)
+def move_item(data, user):
+    serializer = MoveItemSerializer(data=data)
     if serializer.is_valid():
         valid_data = serializer.validated_data
         try:
@@ -29,7 +29,7 @@ def move_item(request):
                 update_from = StockInsumo.objects.filter(id=stock_origen.id).update(stock = F("stock") - valid_data["cantidad"])
                 update_to = StockInsumo.objects.filter(id=stock_destino.id).update(stock = F("stock") + valid_data["cantidad"])
                 data={
-                    "rut": request.user.rut,
+                    "rut": user.rut,
                     "ambulancia_from_id": valid_data["ambulancia_from_id"],
                     "ambulancia_to_id": valid_data["ambulancia_to_id"],
                     "presentacion_id": valid_data["presentacion_id"],

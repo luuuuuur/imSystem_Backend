@@ -25,6 +25,7 @@ from .serializers import ParamPacienteSerializer
 from .serializers import AuthenticationSerializer
 from .serializers import ProgramarDespachoSerializer
 from .serializers import DeviceToken
+from .serializers import AddAmbulanciaSerializer
 # ─── MODELS ──────────────────────────────────────────────────────────────────
 from .models import Personal
 from .models import Paciente
@@ -53,6 +54,7 @@ from ims_backend.task_package.task_log_grupos import crear_grupo_log, agregar_mi
 from ims_backend.task_package.task_log_paciente import agregar_paciente_log
 from ims_backend.task_package.task_log_despacho import crear_despacho_log, asignar_despacho_log, cambiar_estado_log
 from ims_backend.task_package.task_log_personal import agregar_personal_log
+from ims_backend.task_package.task_log_ambulancias import agregar_ambulancia_log
 from ims_backend.toolbox.Fhir_package.export_r4 import export_hl7
 from ims_backend.toolbox.Grupos_package.no_query_params import no_query_params
 from ims_backend.toolbox.Grupos_package.get_with_query import with_query
@@ -150,7 +152,7 @@ class GetInsumosAPI(APIView):
     
     def get(self, request):
         if request.query_params:
-            r = gets_inventario.get_perid(request)
+            r = gets_inventario.get_perid(request.query_params)
             return Response(r,status=status.HTTP_200_OK)
         else:
             r = gets_inventario.get_all()
@@ -159,21 +161,21 @@ class AddInsumoAPI(APIView):
     permission_classes = [ControlProfileOnly & MFAVerified]
     http_method_names = ['post']
     def post(self, request):
-        r = add.add(request)
+        r = add.add(request.data, request.user)
         return Response({}, status=status.HTTP_201_CREATED)
 
 class UpdateStockAPI(APIView):
     http_method_names = ['patch']
     permission_classes = [ControlProfileOnly & MFAVerified]
     def patch(self, request):
-        r = update.update(request)
+        r = update.update(request.data, request.user)
         return  Response({}, status=status.HTTP_200_OK)
 class MoveInsumoAPI(APIView):
     http_method_names = ['patch']
     permission_classes = [ControlProfileOnly & MFAVerified]
 
     def patch(self, request):
-        r = move.move_item(request)
+        r = move.move_item(request.data, request.user)
         return Response({}, status=status.HTTP_200_OK)
 # API para OBTENER las ambulancias
 class AmbulanciaAPI(APIView):
@@ -182,11 +184,38 @@ class AmbulanciaAPI(APIView):
 
     def get(self, request):
         if request.query_params:
-            r = gets_ambulancia.get_perid(request)
+            r = gets_ambulancia.get_perid(request.query_params)
             return Response(r, status=status.HTTP_200_OK)
         else:
             r = gets_ambulancia.get_all()
             return Response(r, status=status.HTTP_200_OK)
+
+class AddAmbulanciaAPI(APIView):
+    http_method_names = ['post']
+    permission_classes = [ControlProfileOnly & MFAVerified]
+
+    def post(self, request):
+        serializer = AddAmbulanciaSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        valid_data = serializer.validated_data
+        try:
+            with transaction.atomic():
+                ambulancia = Ambulancia.objects.create(
+                    patente=valid_data['patente'],
+                    modelo=valid_data['modelo'],
+                    estado_disponibilidad=valid_data['estado_disponibilidad'],
+                )
+                log_data = {
+                    'user_id': request.user.id,
+                    'patente': ambulancia.patente,
+                    'modelo': ambulancia.modelo,
+                    'ambulancia_id': ambulancia.id,
+                }
+                transaction.on_commit(lambda: agregar_ambulancia_log.delay(data=log_data))
+            return Response({'success': 'success', 'ambulancia_id': ambulancia.id}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_409_CONFLICT)
 
 # API para obtener los datos del personal
 class GetPersonal(APIView):
@@ -298,7 +327,7 @@ class RegistroAtencionAPI(APIView):
     http_method_names = ['post']
     permission_classes = [MFAAndMedicalStaff]
     def post(self,request):
-        result = add_atencion(request)
+        result = add_atencion(request.data, request.user)
         return Response(result, status=status.HTTP_201_CREATED)
 
 
@@ -307,7 +336,7 @@ class GruposObtener(APIView):
     permission_classes = [ControlProfileOnly & MFAVerified]
     def get(self, request):
         if request.query_params:
-            r = with_query(request)
+            r = with_query(request.query_params)
             return Response(r, status=status.HTTP_200_OK)
         
         r = no_query_params()
@@ -583,7 +612,7 @@ class AllDespachos(APIView):
     http_method_names = ['get']
     permission_classes = [MFAVerified & ControlProfileOnly]
     def get(self, request):
-        r = all_despachos(request)
+        r = all_despachos(request.query_params)
         return Response(r, status=status.HTTP_200_OK)
 
 # API para retornar el despacho asignado al USUARIO LOGEADO AL MOMENTO DE HACER LA SOLICITUD, diferenciar de arriba que retorna todos los despachos
@@ -591,7 +620,7 @@ class DespachoASolicitudUsuario(APIView):
     http_method_names = ['get']
     permission_classes = [MFAVerified]
     def get(self, request):
-        r = solicitud_usuario(request)
+        r = solicitud_usuario(request.user)
         return Response(r, status=status.HTTP_200_OK)
        
 
@@ -602,7 +631,7 @@ class RetornarAtencionAPI(APIView):
     http_method_names = ['get']
     def get(self, request):
         if request.query_params:
-            r = atencion_with_query(request)
+            r = atencion_with_query(request.query_params, request.user)
             return Response({'success':f'{r}'}, status=status.HTTP_200_OK)
         if request.user.rol.nombre_rol != 'control':
             raise ForbiddenException(detail="Solo el personal de control puede listar todas las atenciones")
@@ -622,7 +651,7 @@ class CambiarEstadoAmbulancia(APIView):
     http_method_names = ['patch']
     permission_classes = [MFAVerified & DriverProfileOnly]
     def patch(self, request):
-        if cambiar_estado.cambiar_estado(request):
+        if cambiar_estado.cambiar_estado(request.query_params):
             return Response({}, status=status.HTTP_200_OK)
 
 

@@ -44,9 +44,10 @@ class SuscritosAGrupo(models.Model):
     fecha_salida = models.DateTimeField(null= True, blank=True, help_text="Es null cuando esta activo en el grupo")
     class Meta:
         indexes = [
-            models.Index(fields = [ 'grupo', 'fecha_entrada']),
-            models.Index(fields= ['grupo', 'fecha_salida']),
-            models.Index(fields= ['grupo','personal'])
+            models.Index(fields=['grupo', 'fecha_entrada']),
+            models.Index(fields=['grupo', 'fecha_salida']),
+            models.Index(fields=['grupo', 'personal']),
+            models.Index(fields=['personal', 'fecha_salida']),
         ]
 #workflow test
 class Paciente(models.Model):
@@ -154,6 +155,7 @@ class Despacho(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=['estado', 'fecha_llamado']),
+            models.Index(fields=['estado', '-id']),
         ]
 
     def __str__(self):
@@ -217,6 +219,9 @@ class SignosVitales(models.Model):
 
     class Meta:
         ordering = ['timestamp']
+        indexes = [
+            models.Index(fields=['atencion', 'timestamp']),
+        ]
 
     def __str__(self):
         return f"Signos Atencion {self.atencion.id} - {self.timestamp}"
@@ -248,7 +253,6 @@ class Documento(models.Model):
     archivo_hash = models.CharField(
         max_length=64,
         unique=True,
-        db_index=True,
         editable=False
     )
     firma_s3_key = models.CharField(max_length=500, blank=True, help_text="Ruta de la firma .sig en S3")

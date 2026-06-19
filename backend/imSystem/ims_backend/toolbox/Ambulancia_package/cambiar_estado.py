@@ -15,8 +15,8 @@ def change_despacho_status(type, ambulancia: Ambulancia):
         ambulancia.save(update_fields=["estado_disponibilidad"])
         
 #TRANSACTION ON COMMIT -> LOG AUDITORIA, NOTIFICACION #SE CAMBIA ESTADO
-def cambiar_estado(request):
-    serializer = CambiarEstadoAmbulancia(data=request.query_params)
+def cambiar_estado(query_params):
+    serializer = CambiarEstadoAmbulancia(data=query_params)
     if serializer.is_valid():
         valid_data = serializer.validated_data
         try:

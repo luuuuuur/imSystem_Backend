@@ -3,9 +3,9 @@ from ims_backend.serializers import ObtenerDespachoSerializer
 from ims_backend.toolbox import exceptions
 from django.db.models import Prefetch
 
-def all_despachos(request):
-        if request.query_params:
-            serializer = ObtenerDespachoSerializer(data=request.query_params)
+def all_despachos(query_params=None):
+        if query_params:
+            serializer = ObtenerDespachoSerializer(data=query_params)
             if serializer.is_valid():
                 valid_data = serializer.validated_data
                 despacho = Despacho.objects.filter(

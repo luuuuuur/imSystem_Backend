@@ -3,9 +3,9 @@ from ims_backend.serializers import AmbulanciaSerializerID
 from ims_backend.toolbox.Ambulancia_package import inventario
 
 
-def get_perid(request):
-    if request.query_params:
-        serializer = AmbulanciaSerializerID(data=request.query_params)
+def get_perid(query_params):
+    if query_params:
+        serializer = AmbulanciaSerializerID(data=query_params)
         if serializer.is_valid():
             valid_data = serializer.validated_data
             r = inventario.specific(valid_data)

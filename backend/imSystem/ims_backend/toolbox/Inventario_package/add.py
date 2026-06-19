@@ -6,8 +6,8 @@ from ims_backend.toolbox import exceptions
 from ims_backend.task_package.task_log_ambulancias import agregar_elemento_log
 
 #AÑADIR UN STOCK A UNA AMBULANCIA
-def add(request):
-    serializer = BulkAddInsumoSerializer(data=request.data)
+def add(data, user):
+    serializer = BulkAddInsumoSerializer(data=data)
     if serializer.is_valid(raise_exception=True):
         valid_data = serializer.validated_data["items"]
         try:
@@ -27,8 +27,8 @@ def add(request):
                 
                                                  for i, data in enumerate(valid_data)])
                 document ={
-                "user": request.user.id,
-                "rut": request.user.rut,
+                "user": user.id,
+                "rut": user.rut,
                 "added":[str(p.id) for p in presentacin_arr]
                 }
                 transaction.on_commit(lambda:agregar_elemento_log.delay(data=document))

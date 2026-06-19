@@ -4,9 +4,9 @@ from ims_backend.toolbox.exceptions import BadRequestException
 from rest_framework.serializers import ValidationError
 
 #Devolver un grupo por ID en query
-def with_query(request):
+def with_query(query_params):
     try:
-        serializer = ParamSerializer(data=request.query_params)
+        serializer = ParamSerializer(data=query_params)
         if serializer.is_valid():
             valid_data = serializer.validated_data
             grupos = {}

@@ -224,6 +224,15 @@ class DeviceToken(serializers.Serializer):
     token = serializers.CharField()
 
 
+class AddAmbulanciaSerializer(serializers.Serializer):
+    patente = serializers.CharField(max_length=10)
+    modelo  = serializers.CharField(max_length=100)
+    estado_disponibilidad = serializers.ChoiceField(
+        choices=Ambulancia.ESTADOS,
+        default=Ambulancia.DISPONIBLE,
+        required=False,
+    )
+
 class CambiarEstadoAmbulancia(serializers.Serializer):
     ambid = serializers.IntegerField()
     conid = serializers.IntegerField()

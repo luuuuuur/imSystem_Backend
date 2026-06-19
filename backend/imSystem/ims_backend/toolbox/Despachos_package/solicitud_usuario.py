@@ -1,9 +1,9 @@
 from ims_backend.models import SuscritosAGrupo,DespachoPersonal
 from ims_backend.toolbox.exceptions import NotFoundException
-def solicitud_usuario(request):
+def solicitud_usuario(user):
             # buscar el grupo activo del usuario
             suscripcion = SuscritosAGrupo.objects.filter(
-                personal=request.user,
+                personal=user,
                 fecha_salida=None
             ).first()
 

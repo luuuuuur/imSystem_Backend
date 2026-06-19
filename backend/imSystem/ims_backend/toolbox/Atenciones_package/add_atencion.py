@@ -14,8 +14,8 @@ from django.db.models   import F
 import rustjson
 from ims_backend.task_package.task_notificaciones import notificacion
 from ims_backend.toolbox.Despachos_package.change_status import change_despacho_status
-def add_atencion(request):
-    serializer = PayloadSerializer(data=request.data)
+def add_atencion(data, user):
+    serializer = PayloadSerializer(data=data)
     if serializer.is_valid():
         valid_data = serializer.validated_data
         svd = valid_data['signos_vitales']
@@ -35,7 +35,7 @@ def add_atencion(request):
                     ambulancia=ambulancia, despacho=despacho,
                     hora_salida=despacho_data['hora_salida'],
                     hora_llegada=despacho_data['hora_llegada'],
-                    rut_registrador=request.user, rut_receptor=valid_data["rut_receptor"]
+                    rut_registrador=user, rut_receptor=valid_data["rut_receptor"]
                 )
 
                 SignosVitales.objects.bulk_create([SignosVitales(atencion=atencion, **sv) for sv in svd])
@@ -77,9 +77,9 @@ def add_atencion(request):
                         "rut": despacho.paciente.rut
                     },
                     "registrado_por": {
-                        "nombre_completo": request.user.full_name,
-                        "rut": request.user.rut,
-                        "rol": request.user.rol.nombre_rol
+                        "nombre_completo": user.full_name,
+                        "rut": user.rut,
+                        "rol": user.rol.nombre_rol
                     },
                     "recibido_por":atencion.rut_receptor,
                     "signos_vitales": list(SignosVitales.objects.filter(atencion=atencion).values(

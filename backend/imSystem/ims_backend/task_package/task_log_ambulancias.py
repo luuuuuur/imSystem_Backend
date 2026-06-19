@@ -27,6 +27,20 @@ def agregar_elemento_log(self, data):
     except Exception as exc:
         raise self.retry(exc=exc)
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def agregar_ambulancia_log(self, data):
+    try:
+        user = Personal.objects.get(id=data["user_id"])
+        log = (
+            f"El usuario con rut {user.rut} registró la ambulancia "
+            f"patente {data['patente']} modelo {data['modelo']} con id {data['ambulancia_id']}."
+        )
+        LogAuditoria.objects.create(
+            tipo="ambulancia", usuario_id=user.id, rut_usuario=user.rut, descripcion=log
+        )
+    except Exception as exc:
+        raise self.retry(exc=exc)
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def actualizar_estados(self, conid, ambid):
     try:
         personal = Personal.objects.get(id = conid)
