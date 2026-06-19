@@ -177,7 +177,7 @@ class MoveInsumoAPI(APIView):
 # API para OBTENER las ambulancias
 class AmbulanciaAPI(APIView):
     http_method_names = ['get']
-    permission_classes = [(ControlProfileOnly | MedicProfileOnly | NurseProfileOnly) & MFAVerified]
+    permission_classes = [(ControlProfileOnly | MedicProfileOnly | NurseProfileOnly | DriverProfileOnly) & MFAVerified]
 
     def get(self, request):
         if request.query_params:
