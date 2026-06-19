@@ -137,7 +137,7 @@ class DespachoAtencionSerializer(serializers.Serializer):
 class InsumoUtilizadoSerializer(serializers.Serializer):
     presentacion_id = serializers.IntegerField()
     cantidad_usada = serializers.IntegerField()
-    observaciones = serializers.CharField(max_length=255, required=False)
+    observaciones = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
 class PayloadSerializer(serializers.Serializer):
     despacho = DespachoAtencionSerializer()
     signos_vitales = SignosVitalesSerializer(many=True)
