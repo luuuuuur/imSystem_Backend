@@ -13,6 +13,9 @@ _equipo_qs = DespachoPersonal.objects.select_related('grupo').prefetch_related(
     Prefetch('grupo__grupo_nombre', queryset=_members_qs, to_attr='miembros_activos')
 )
 
+# Derived at import time from the model — stays in sync with Despacho.ESTADOS automatically
+_VALID_ESTADOS = {value for value, _ in Despacho.ESTADOS}
+
 class StandarPaginator(CursorPagination):
     page_size = 10
     page_size_query_param = 'page_size'
@@ -27,3 +30,10 @@ class DespachoViewSet(ReadOnlyModelViewSet):
     pagination_class = StandarPaginator
     http_method_names = ['get']
     permission_classes = [MFAVerified & ControlProfileOnly]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        estado = self.request.query_params.get('estado')
+        if estado and estado in _VALID_ESTADOS:
+            qs = qs.filter(estado=estado)
+        return qs
