@@ -633,8 +633,9 @@ class VerificarDocumentoAPI(APIView):
     def get(self, request):
         from ims_backend.models import Documento
         from ims_backend.aws_package.s3 import s3_client
+        from ims_backend.toolbox.customencoder import CustomEncoder
         from backend_config.settings import AWS_BUCKET_NAME
-        import rustjson, base64
+        import rustjson, base64, json as _json
 
         serializer = self.VerificarDocumentoSerializer(data=request.query_params)
         if not serializer.is_valid():
@@ -649,30 +650,40 @@ class VerificarDocumentoAPI(APIView):
             raise NotFoundException(detail="No existe un documento con ese hash.")
 
         try:
-            json_bytes = s3_client.get_object(
+            raw_json = s3_client.get_object(
                 Bucket=AWS_BUCKET_NAME, Key=doc.archivo_s3_key
             )["Body"].read()
 
-            stored_sig_bytes = s3_client.get_object(
+            # .sig was uploaded as base64 text, not raw bytes
+            stored_sig_b64 = s3_client.get_object(
                 Bucket=AWS_BUCKET_NAME, Key=doc.firma_s3_key
             )["Body"].read()
+            stored_sig_bytes = base64.b64decode(stored_sig_b64)
         except Exception:
             raise InternalServerException(detail="Error al descargar el documento desde S3.")
 
         try:
-            computed_hash_bytes, computed_sig_bytes = rustjson.data(json_bytes)
+            # Strip Hash and Firma — they were added AFTER the original hash was computed
+            document = _json.loads(raw_json)
+            document.pop("Hash", None)
+            document.pop("Firma", None)
+            clean_bytes = _json.dumps(
+                document, sort_keys=True, ensure_ascii=False, cls=CustomEncoder
+            ).encode("utf-8")
+
+            computed_hash_bytes, computed_sig_bytes = rustjson.data(clean_bytes)
         except Exception:
             raise InternalServerException(detail="Error al recomputar el hash del documento.")
 
-        hash_ok = computed_hash_bytes.hex() == hash_input
+        hash_ok  = computed_hash_bytes.hex() == hash_input
         sig_s3_ok = computed_sig_bytes == stored_sig_bytes
 
         result = {
-            "hash":       hash_input,
-            "hash_valido": hash_ok,
+            "hash":            hash_input,
+            "hash_valido":     hash_ok,
             "firma_s3_valida": sig_s3_ok,
-            "atencion_id": doc.atencion_id,
-            "creado_en": doc.created_at,
+            "atencion_id":     doc.atencion_id,
+            "creado_en":       doc.created_at,
         }
 
         if firma_input:
