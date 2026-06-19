@@ -571,7 +571,7 @@ class ProgramarDespacho(APIView):
                     log_data["despacho_id"] = _valid_data["despacho_id"]
                     log_data["estado"] = Despacho.PROGRAMADO
                     transaction.on_commit(lambda: cambiar_estado_log.delay(data=log_data))
-                    transaction.on_commit(lambda: notificacion.delay(type="DP",grupo_id=str(_valid_data["grupo_id"]), fecha=str(_despacho.fecha_programada)))
+                    transaction.on_commit(lambda: notificacion.delay(type=Despacho.PROGRAMADO, grupo_id=str(_valid_data["grupo_id"]), fecha=str(_despacho.fecha_programada)))
                 return Response({}, status=status.HTTP_200_OK)
             except Exception as e: return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else: return Response({}, status=status.HTTP_400_BAD_REQUEST)
