@@ -23,13 +23,41 @@ class LogAuditoriaSerializer(serializers.ModelSerializer):
         fields=["id","tipo", "atencion_id", "usuario", "rut_usuario", "descripcion", "timestamp"]
 
 class DespachoListSerializer(serializers.ModelSerializer):
+    paciente = serializers.SerializerMethodField()
+    personal = serializers.SerializerMethodField()
+
     class Meta:
         model = Despacho
         fields = [
             "id", "estado", "direccion_origen", "direccion_destino",
             "descripcion_llamado", "fecha_llamado", "fecha_asignacion",
             "fecha_programada", "fecha_finalizacion",
-            "ambulancia_id", "creado_por_id", "asignado_por_id", "paciente_id"
+            "ambulancia_id", "creado_por_id", "asignado_por_id",
+            "paciente", "personal",
+        ]
+
+    def get_paciente(self, obj):
+        if not obj.paciente:
+            return None
+        return {
+            "nombre_completo": obj.paciente.nombre_completo,
+            "rut": obj.paciente.rut,
+        }
+
+    def get_personal(self, obj):
+        equipo = getattr(obj, 'equipo_prefetch', [])
+        if not equipo:
+            return []
+        miembros = getattr(equipo[0].grupo, 'miembros_activos', [])
+        return [
+            {
+                "id": m.personal.id,
+                "first_name": m.personal.first_name,
+                "last_name": m.personal.last_name,
+                "rut": m.personal.rut,
+                "rol": m.personal.rol.nombre_rol if m.personal.rol else None,
+            }
+            for m in miembros
         ]
 class PacienteSerializer(serializers.Serializer):
     rut              = serializers.CharField()
