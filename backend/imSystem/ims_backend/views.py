@@ -621,5 +621,5 @@ class CambiarEstadoAmbulancia(APIView):
     http_method_names = ['patch']
     permission_classes = [MFAVerified & DriverProfileOnly]
     def patch(self, request):
-        if cambiar_estado(request):
+        if cambiar_estado.cambiar_estado(request):
             return Response({}, status=status.HTTP_200_OK)
