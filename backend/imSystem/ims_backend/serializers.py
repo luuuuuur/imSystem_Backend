@@ -5,7 +5,7 @@ from rest_framework import serializers
 # ---- MODELS ----
 from .models import (
     Ambulancia, Personal, Atencion, GrupoPersonal, SuscritosAGrupo, SignosVitales, PreInforme,
-    Cronologia, LogAuditoria
+    Cronologia, LogAuditoria, Despacho
 )
 
 
@@ -21,6 +21,16 @@ class LogAuditoriaSerializer(serializers.ModelSerializer):
     class Meta:
         model= LogAuditoria
         fields=["id","tipo", "atencion_id", "usuario", "rut_usuario", "descripcion", "timestamp"]
+
+class DespachoListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Despacho
+        fields = [
+            "id", "estado", "direccion_origen", "direccion_destino",
+            "descripcion_llamado", "fecha_llamado", "fecha_asignacion",
+            "fecha_programada", "fecha_finalizacion",
+            "ambulancia_id", "creado_por_id", "asignado_por_id", "paciente_id"
+        ]
 class PacienteSerializer(serializers.Serializer):
     rut              = serializers.CharField()
     nombre_completo  = serializers.CharField(required=False, default='')
@@ -190,3 +200,7 @@ class CambiarEstadoAmbulancia(serializers.Serializer):
     ambid = serializers.IntegerField()
     conid = serializers.IntegerField()
     estado = serializers.ChoiceField(Ambulancia.ESTADOS)
+
+class VerificarDocumentoSerializer(serializers.Serializer):
+    hash  = serializers.CharField(max_length=64)
+    firma = serializers.CharField(required=False)

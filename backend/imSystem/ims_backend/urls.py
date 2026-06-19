@@ -4,9 +4,11 @@ from .views import *
 
 #VIEWSETS
 from ims_backend.toolbox.Paginators.logPaginator import LogViewSet
+from ims_backend.toolbox.Paginators.despachosPaginator import DespachoViewSet
 router = DefaultRouter()
 #VIEWSET REGISTER
-router.register(r'api/logs', LogViewSet,basename='logs')
+router.register(r'api/logs', LogViewSet, basename='logs')
+router.register(r'api/despachos/all', DespachoViewSet, basename='despachos-all')
 
 
 urlpatterns = [
@@ -23,8 +25,7 @@ urlpatterns = [
     path("api/grupo/crear/", GrupoCrear.as_view(), name="GrupoCrear"),
     path("api/grupo/suscribir/", AddMemberToGroup.as_view(), name="AddMemberToGroup"),
     path("api/grupo/desuscribir/", GrupoRemoverMiembro.as_view(), name="GrupoRemoverMiembro"),
-    path("api/despachos/get/", DespachoASolicitudUsuario.as_view(), name="DespachoUsuarioAPI"),
-    path("api/despachos/getall/", AllDespachos.as_view(), name="AllDespachos"),
+    path("api/despachos/get/", DespachoASolicitudUsuario.as_view(), name="DespachoUsuarioAPI"),    
     path("api/despachos/add/", CreateDespacho.as_view(), name="CreateDespacho"),
     path("api/despachos/asignar/", AsignarDespacho.as_view(), name="AsignarDespacho"),
     path("api/despachos/programar/",ProgramarDespacho.as_view(), name="ProgramarDespacho"),
@@ -36,7 +37,8 @@ urlpatterns = [
     path("api/inv/add/", AddInsumoAPI.as_view(), name="AddInsumoAPI"),
     path("api/inv/move/", MoveInsumoAPI.as_view(), name="MoveInsumoAPI"),
     path("api/inv/update/", UpdateStockAPI.as_view(), name="UpdateStockAPI"),
-    path("api/fhir/", FHIR.as_view(), name="FHIR")
+    path("api/fhir/", FHIR.as_view(), name="FHIR"),
+    path("api/documentos/verificar/", VerificarDocumentoAPI.as_view(), name="VerificarDocumento")
 ]
 #ADD VIEWSET TO URLPATTERNS
 urlpatterns += router.urls

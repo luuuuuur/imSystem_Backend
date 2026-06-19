@@ -623,3 +623,64 @@ class CambiarEstadoAmbulancia(APIView):
     def patch(self, request):
         if cambiar_estado.cambiar_estado(request):
             return Response({}, status=status.HTTP_200_OK)
+
+
+class VerificarDocumentoAPI(APIView):
+    from ims_backend.serializers import VerificarDocumentoSerializer
+    http_method_names = ['get']
+    permission_classes = [MFAVerified]
+
+    def get(self, request):
+        from ims_backend.models import Documento
+        from ims_backend.aws_package.s3 import s3_client
+        from backend_config.settings import AWS_BUCKET_NAME
+        import rustjson, base64
+
+        serializer = self.VerificarDocumentoSerializer(data=request.query_params)
+        if not serializer.is_valid():
+            raise BadRequestException(detail=serializer.errors)
+
+        hash_input = serializer.validated_data["hash"]
+        firma_input = serializer.validated_data.get("firma")
+
+        try:
+            doc = Documento.objects.select_related("atencion").get(archivo_hash=hash_input)
+        except Documento.DoesNotExist:
+            raise NotFoundException(detail="No existe un documento con ese hash.")
+
+        try:
+            json_bytes = s3_client.get_object(
+                Bucket=AWS_BUCKET_NAME, Key=doc.archivo_s3_key
+            )["Body"].read()
+
+            stored_sig_bytes = s3_client.get_object(
+                Bucket=AWS_BUCKET_NAME, Key=doc.firma_s3_key
+            )["Body"].read()
+        except Exception:
+            raise InternalServerException(detail="Error al descargar el documento desde S3.")
+
+        try:
+            computed_hash_bytes, computed_sig_bytes = rustjson.data(json_bytes)
+        except Exception:
+            raise InternalServerException(detail="Error al recomputar el hash del documento.")
+
+        hash_ok = computed_hash_bytes.hex() == hash_input
+        sig_s3_ok = computed_sig_bytes == stored_sig_bytes
+
+        result = {
+            "hash":       hash_input,
+            "hash_valido": hash_ok,
+            "firma_s3_valida": sig_s3_ok,
+            "atencion_id": doc.atencion_id,
+            "creado_en": doc.created_at,
+        }
+
+        if firma_input:
+            try:
+                firma_bytes = base64.b64decode(firma_input)
+                result["firma_parametro_valida"] = (firma_bytes == stored_sig_bytes)
+            except Exception:
+                result["firma_parametro_valida"] = False
+
+        result["valido"] = hash_ok and sig_s3_ok
+        return Response(result, status=status.HTTP_200_OK)
