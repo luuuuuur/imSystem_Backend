@@ -1,7 +1,6 @@
 from ims_backend.models import SuscritosAGrupo,DespachoPersonal
-from ims_backend.toolbox.exceptions import NotFoundException, InternalServerException
+from ims_backend.toolbox.exceptions import NotFoundException
 def solicitud_usuario(request):
-        try:
             # buscar el grupo activo del usuario
             suscripcion = SuscritosAGrupo.objects.filter(
                 personal=request.user,
@@ -59,5 +58,3 @@ def solicitud_usuario(request):
                 })
 
             return resultado
-        except Exception:
-            return InternalServerException(detail="Fallo al obtener los datos")

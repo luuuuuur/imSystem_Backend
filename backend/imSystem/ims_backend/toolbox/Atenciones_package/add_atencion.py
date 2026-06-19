@@ -121,4 +121,4 @@ def add_atencion(request):
         except Exception:
             raise exceptions.InternalServerException(detail="Failed to upload to S3")
     else:
-        raise exceptions.InternalServerException(detail="Serializer Error")
+        raise exceptions.BadRequestException(detail=serializer.errors)
