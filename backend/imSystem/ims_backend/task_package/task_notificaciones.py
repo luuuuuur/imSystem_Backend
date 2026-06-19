@@ -72,8 +72,8 @@ def _enviar_estado_ambulancia(patente, estado, id):
         usuario__rol__nombre_rol='control',
         usuario__is_active=True
     ).values_list('device_token', flat=True))
-    logger.info(f'[FCM] Estado ambulancia: Se cambio el estado de: {patente}, tokens={len(token)}')
-    _send(token=token, _title="Ambulancia", _body=f"la persona: {id}, ambulancia con patente: {patente} ha cambiado a: {estado}")
+    logger.info(f'[FCM] Estado ambulancia: Se cambio el estado de la ambulancia con patente: {patente}, tokens={len(token)}')
+    _send(token=token, _title="Ambulancia", _body=f"Usuario con ID: {id}, Ambulancia con patente: {patente} ha cambiado a: {estado}")
 @shared_task(bind=True, max_retries=5, default_retry_delay=60)
 def notificacion(self, type, **kwargs):
     try:
