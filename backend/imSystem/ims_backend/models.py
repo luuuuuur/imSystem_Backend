@@ -84,7 +84,7 @@ class Ambulancia(models.Model):
 
     patente = models.CharField(max_length=10, unique=True)
     modelo = models.CharField(max_length=100)
-    estado_disponibilidad = models.CharField(max_length=50, choices=ESTADOS, default='disponible')
+    estado_disponibilidad = models.CharField(max_length=100, choices=ESTADOS, default='disponible')
 
     def __str__(self):
         return f"{self.modelo} - {self.patente}"
