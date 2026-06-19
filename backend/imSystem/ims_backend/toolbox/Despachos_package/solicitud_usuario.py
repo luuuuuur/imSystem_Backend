@@ -18,6 +18,7 @@ def solicitud_usuario(request):
                 'despacho__ambulancia',
                 'despacho__creado_por',
                 'despacho__atencion',
+                'despacho__paciente',
             ).exclude(
                 despacho__estado__in=['finalizado', 'cancelado']
             )

@@ -10,17 +10,18 @@ def all_despachos(request):
                 valid_data = serializer.validated_data
                 despacho = Despacho.objects.filter(
                     id=valid_data['despacho_id'],
-                ).select_related('ambulancia','atencion','asignado_por','creado_por','paciente').exclude(
-                    estado__in=['finalizado', 'cancelado']).first()
+                ).select_related('ambulancia', 'atencion', 'asignado_por', 'creado_por', 'paciente').prefetch_related(
+                    Prefetch('equipo', queryset=DespachoPersonal.objects.select_related('grupo'), to_attr='equipo_prefetch')
+                ).exclude(estado__in=['finalizado', 'cancelado']).first()
 
                 if not despacho:
                     raise exceptions.BadRequestException
 
-                despacho_personal = DespachoPersonal.objects.filter(despacho=despacho).first()
+                dp = despacho.equipo_prefetch[0] if despacho.equipo_prefetch else None
                 personal = []
-                if despacho_personal:
+                if dp:
                     personal = list(SuscritosAGrupo.objects.filter(
-                        grupo=despacho_personal.grupo,
+                        grupo=dp.grupo,
                         fecha_salida=None
                     ).values(
                         'personal__id', 'personal__first_name',

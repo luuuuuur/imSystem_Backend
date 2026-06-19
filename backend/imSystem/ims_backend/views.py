@@ -189,7 +189,7 @@ class AmbulanciaAPI(APIView):
 
 # API para obtener los datos del personal
 class GetPersonal(APIView):
-    htpp_method_names = ['get']
+    http_method_names = ['get']
     permission_classes = [MFAVerified & (MedicProfileOnly | NurseProfileOnly | DriverProfileOnly | ControlProfileOnly)]
     def get(self, request):
         personal_activo = Personal.objects.filter(is_active=True).select_related('rol')

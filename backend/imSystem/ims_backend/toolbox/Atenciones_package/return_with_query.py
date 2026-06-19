@@ -11,7 +11,7 @@ def atencion_with_query(request):
     if serializer.is_valid():
         valid_data=serializer.validated_data
         try:
-            atencion = get_object_or_404(Atencion, id=valid_data['id'])
+            atencion = get_object_or_404(Atencion.objects.prefetch_related('documentos'), id=valid_data['id'])
 
             if request.user.rol.nombre_rol != 'control':
                 user_groups = SuscritosAGrupo.objects.filter(

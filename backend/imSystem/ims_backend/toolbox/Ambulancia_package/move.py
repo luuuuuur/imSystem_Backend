@@ -1,5 +1,8 @@
+import logging
 from django.db.models import F
 from ims_backend.models import StockInsumo
+
+logger = logging.getLogger(__name__)
 from ims_backend.serializers import MoveItemSerializer
 from django.shortcuts import get_object_or_404
 from django.db import transaction
@@ -40,7 +43,7 @@ def move_item(request):
         except (ConflictException, BadRequestException, InternalServerException):
             raise
         except Exception as e:
-            print(f"ERROR REAL: {type(e).__name__}: {e}")
+            logger.error(f"ERROR REAL: {type(e).__name__}: {e}")
             raise NotFoundException(detail="Fallo al intentar encontrar los objetivos")
     else:
         raise BadRequestException(detail="Fallo al mover el item, typos incorrectos")

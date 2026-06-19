@@ -193,7 +193,7 @@ class Atencion(models.Model):
 
     sello_electronico = models.TextField(blank=True, null=True, help_text="Hash de integridad")
     estado_sello = models.CharField(max_length=20, default="Pendiente")
-    rut_registrador = models.ForeignKey(Personal, null=False, blank= False, on_delete=models.PROTECT, default='1')
+    rut_registrador = models.ForeignKey(Personal, null=False, blank=False, on_delete=models.PROTECT, default=1)
     rut_receptor = models.CharField(max_length=12, null=True, blank=True, help_text="Si está en blanco fue recibido por la misma institución")
     def __str__(self):
         return f"Atención {self.id} - {self.despacho.paciente.nombre_completo if self.despacho 

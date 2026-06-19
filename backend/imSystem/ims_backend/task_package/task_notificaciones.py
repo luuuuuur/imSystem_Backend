@@ -30,48 +30,40 @@ def _send(token, _title, _body):
         else:
             logger.error(f'[FCM] Token[{i}] {token[i][:20]}... -> FAILED: {r.exception}')
 
+def _tokens_por_grupo(grupo_id):
+    return list(DeviceToken.objects.filter(
+        usuario__grupo_personal__grupo_id=grupo_id,
+        usuario__grupo_personal__fecha_salida=None,
+    ).values_list('device_token', flat=True))
+
+def _tokens_por_rol(nombre_rol):
+    return list(DeviceToken.objects.filter(
+        usuario__rol__nombre_rol=nombre_rol,
+        usuario__is_active=True,
+    ).values_list('device_token', flat=True))
+
 def _enviar_despacho_programado(grupo_id, fecha):
-    token = list(
-        DeviceToken.objects.filter(
-            usuario__grupo_personal__grupo_id=grupo_id,
-            usuario__grupo_personal__fecha_salida=None,
-        ).values_list('device_token', flat=True)
-    )
+    token = _tokens_por_grupo(grupo_id)
     logger.info(f'[FCM] despacho_programado: grupo_id={grupo_id}, tokens={len(token)}')
     _send(token=token, _title="Programacion de Despacho", _body=f"Se te ha programado un despacho con fecha {fecha}")
 
 def _enviar_despacho_finalizado(despacho_id):
-    _token = list(
-        DeviceToken.objects.filter(
-            usuario__rol__nombre_rol='control',
-            usuario__is_active=True
-        ).values_list('device_token', flat=True)
-    )
-    logger.info(f'[FCM] despacho_finalizado: despacho_id={despacho_id}, tokens={len(_token)}')
-    _send(token=_token, _title="Despacho finalizado", _body=f"El equipo ha finalizado el despacho, id: {despacho_id}")
+    token = _tokens_por_rol('control')
+    logger.info(f'[FCM] despacho_finalizado: despacho_id={despacho_id}, tokens={len(token)}')
+    _send(token=token, _title="Despacho finalizado", _body=f"El equipo ha finalizado el despacho, id: {despacho_id}")
 
 def _enviar_atencion_registrada(fecha):
-    token = list(DeviceToken.objects.filter(
-        usuario__rol__nombre_rol='control',
-        usuario__is_active=True
-    ).values_list('device_token', flat=True))
+    token = _tokens_por_rol('control')
     logger.info(f'[FCM] atencion_registrada: fecha={fecha}, tokens={len(token)}')
     _send(token=token, _title="Se ha registrado una atencion", _body=f"Se ha registrado la atencion con fecha: {fecha}")
 
 def _enviar_despacho_emergencia(dir, grupo_id):
-    token = list(
-        DeviceToken.objects.filter(
-            usuario__grupo_personal__grupo_id=grupo_id,
-            usuario__grupo_personal__fecha_salida=None
-        ).values_list('device_token', flat=True)
-    )
+    token = _tokens_por_grupo(grupo_id)
     logger.info(f'[FCM] emergencia: grupo_id={grupo_id}, dir={dir}, tokens={len(token)}')
     _send(token=token, _title="Emergencia", _body=f"Se te ha llamado por una situación de emergencia, favor de dirigirse a la siguiente direccion lo antes posible: {dir}")
+
 def _enviar_estado_ambulancia(patente, estado, id):
-    token = list(DeviceToken.objects.filter(
-        usuario__rol__nombre_rol='control',
-        usuario__is_active=True
-    ).values_list('device_token', flat=True))
+    token = _tokens_por_rol('control')
     logger.info(f'[FCM] Estado ambulancia: Se cambio el estado de la ambulancia con patente: {patente}, tokens={len(token)}')
     _send(token=token, _title="Ambulancia", _body=f"Usuario con ID: {id}, Ambulancia con patente: {patente} ha cambiado a: {estado}")
 @shared_task(bind=True, max_retries=5, default_retry_delay=60)
