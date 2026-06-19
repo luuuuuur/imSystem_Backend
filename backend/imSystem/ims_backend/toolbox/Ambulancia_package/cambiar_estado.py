@@ -18,6 +18,9 @@ def change_despacho_status(type, ambulancia: Ambulancia):
         case Ambulancia.MANTENCION:
             ambulancia.estado_disponibilidad=Ambulancia.MANTENCION
             ambulancia.save(update_fields=["estado_disponibilidad"])
+        case Ambulancia.ENPREPARACION:
+            ambulancia.estado_disponibilidad=Ambulancia.ENPREPARACION
+            ambulancia.save(update_fields=["estado_disponibilidad"])
         case _:
             return
         
