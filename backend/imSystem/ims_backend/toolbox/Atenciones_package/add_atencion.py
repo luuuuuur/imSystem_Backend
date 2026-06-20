@@ -25,8 +25,8 @@ def add_atencion(data, user):
         despacho_data = valid_data['despacho']
         despacho = get_object_or_404(Despacho, id=despacho_data['despacho_id'])
         ambulancia = get_object_or_404(Ambulancia, id=despacho_data['ambulancia_id'])
-        if despacho.estado != "asignado":
-            raise exceptions.ConflictException(detail="Ya existe el despacho")
+        if despacho.estado not in (Despacho.ASIGNADO, Despacho.EMERGENCIA):
+            raise exceptions.ConflictException(detail="El despacho no está en un estado válido para registrar una atención")
         if Atencion.objects.filter(despacho=despacho).exists():
             raise exceptions.ConflictException(detail="Esta atencion ya fue despachada")
         try:
