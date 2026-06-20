@@ -394,7 +394,7 @@ class GrupoRemoverMiembro(APIView):
                         "group_id":grupo_to_update.id,
                         "group_name":grupo_to_update.nombre_grupo,
                         "rut":request.user.rut,
-                        "id":request.user.id
+                        "user_id":request.user.id
                     }
                     transaction.on_commit(lambda:actualizar_estado_miembros_log.delay(data=log_data))
                 return Response({'success':'success'}, status=status.HTTP_200_OK)

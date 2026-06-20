@@ -21,7 +21,7 @@ def agregar_miembros_log(self, data):
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def actualizar_estado_miembros_log(self, data):
     try:
-        log = f"El usuario con RUT {data['rut']} (ID: {data['user_id']}) desacopló al miembro con RUT {data['personal_rut']} del grupo '{data['group_name']}' (ID: {data['group_id']})."
+        log = f"El miembro con RUT {data['personal_rut']} ha sido removido del grupo '{data['group_name']}' (ID: {data['group_id']}) por el usuario con RUT {data['rut']} (ID: {data['user_id']})."
         LogAuditoria.objects.create(tipo="grupo", usuario_id=data["user_id"], rut_usuario=data["rut"], descripcion=log)
     except Exception as exc:
         raise self.retry(exc=exc)
