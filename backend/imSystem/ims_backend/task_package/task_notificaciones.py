@@ -45,27 +45,27 @@ def _tokens_por_rol(nombre_rol):
 def _enviar_despacho_programado(grupo_id, fecha):
     token = _tokens_por_grupo(grupo_id)
     logger.info(f'[FCM] despacho_programado: grupo_id={grupo_id}, tokens={len(token)}')
-    _send(token=token, _title="Programacion de Despacho", _body=f"Se te ha programado un despacho con fecha {fecha}")
+    _send(token=token, _title="Nuevo despacho programado", _body=f"Se te ha asignado un despacho para el {fecha}. Revisa los detalles en el sistema y prepárate con anticipación.")
 
 def _enviar_despacho_finalizado(despacho_id):
     token = _tokens_por_rol('control')
     logger.info(f'[FCM] despacho_finalizado: despacho_id={despacho_id}, tokens={len(token)}')
-    _send(token=token, _title="Despacho finalizado", _body=f"El equipo ha finalizado el despacho, id: {despacho_id}")
+    _send(token=token, _title="Despacho finalizado", _body=f"El equipo ha completado el despacho con ID {despacho_id}. Ingresa al sistema para revisar el resumen y cerrar el registro.")
 
 def _enviar_atencion_registrada(fecha):
     token = _tokens_por_rol('control')
     logger.info(f'[FCM] atencion_registrada: fecha={fecha}, tokens={len(token)}')
-    _send(token=token, _title="Se ha registrado una atencion", _body=f"Se ha registrado la atencion con fecha: {fecha}")
+    _send(token=token, _title="Nueva atención registrada", _body=f"Se ha registrado una nueva atención el {fecha}. Ingresa al sistema para revisar los detalles del caso.")
 
 def _enviar_despacho_emergencia(dir, grupo_id):
     token = _tokens_por_grupo(grupo_id)
     logger.info(f'[FCM] emergencia: grupo_id={grupo_id}, dir={dir}, tokens={len(token)}')
-    _send(token=token, _title="Emergencia", _body=f"Se te ha llamado por una situación de emergencia, favor de dirigirse a la siguiente direccion lo antes posible: {dir}")
+    _send(token=token, _title="Alerta de emergencia", _body=f"Se ha activado una alerta de emergencia. Dirígete de inmediato a: {dir}. Activa el protocolo de respuesta urgente.")
 
 def _enviar_estado_ambulancia(patente, estado, id):
     token = _tokens_por_rol('control')
-    logger.info(f'[FCM] Estado ambulancia: Se cambio el estado de la ambulancia con patente: {patente}, tokens={len(token)}')
-    _send(token=token, _title="Ambulancia", _body=f"Usuario con ID: {id}, Ambulancia con patente: {patente} ha cambiado a: {estado}")
+    logger.info(f'[FCM] Estado ambulancia: Se cambió el estado de la ambulancia con patente {patente}, tokens={len(token)}')
+    _send(token=token, _title="Cambio de estado de ambulancia", _body=f"La ambulancia con patente {patente} ha actualizado su estado a '{estado}'. Acción registrada por el usuario con ID {id}.")
 @shared_task(bind=True, max_retries=5, default_retry_delay=60)
 def notificacion(self, type, **kwargs):
     try:
