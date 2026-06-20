@@ -5,7 +5,7 @@ from ims_backend.toolbox.Paginators import BaseReadViewSet, StandardCursorPagina
 
 
 class LogCursorPagination(StandardCursorPagination):
-    ordering = '-timestamp'
+    ordering = '-id'
 
 
 class LogViewSet(BaseReadViewSet):
