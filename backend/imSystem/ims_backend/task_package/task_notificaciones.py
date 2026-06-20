@@ -42,6 +42,11 @@ def _tokens_por_rol(nombre_rol):
         usuario__is_active=True,
     ).values_list('device_token', flat=True))
 
+def _enviar_despacho_asignado(grupo_id, despacho_id):
+    token = _tokens_por_grupo(grupo_id)
+    logger.info(f'[FCM] despacho_asignado: grupo_id={grupo_id}, tokens={len(token)}')
+    _send(token=token, _title="Nuevo despacho asignado", _body=f"Se te ha asignado el despacho con ID {despacho_id}. Revisa los detalles y prepara al equipo.")
+
 def _enviar_despacho_programado(grupo_id, fecha):
     token = _tokens_por_grupo(grupo_id)
     logger.info(f'[FCM] despacho_programado: grupo_id={grupo_id}, tokens={len(token)}')
@@ -72,6 +77,8 @@ def notificacion(self, type, **kwargs):
         logger.info(f'[FCM] Tarea notificacion iniciada: type={type}, kwargs={kwargs}')
         _init_app_firebase()
         match type:
+            case Despacho.ASIGNADO:
+                _enviar_despacho_asignado(kwargs["grupo_id"], kwargs["despacho_id"])
             case Despacho.PROGRAMADO:
                 _enviar_despacho_programado(kwargs["grupo_id"], kwargs["fecha"])
             case Despacho.FINALIZADO:

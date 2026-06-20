@@ -569,6 +569,8 @@ class AsignarDespacho(APIView):
                     transaction.on_commit(lambda: asignar_despacho_log.delay(data=log_data))
                 if valid_data["is_emergency"]:
                     notificacion.delay(type=Despacho.EMERGENCIA, dir=_despacho.direccion_destino, grupo_id=grupo_nombre.id)
+                else:
+                    notificacion.delay(type=Despacho.ASIGNADO, grupo_id=grupo_nombre.id, despacho_id=_despacho.id)
                 return Response({'success':'success', 'despacho_data':{
                         'id':valid_data['despacho_id'],
                         'grupo':{
