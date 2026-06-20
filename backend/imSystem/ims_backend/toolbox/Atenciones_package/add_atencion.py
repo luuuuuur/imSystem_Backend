@@ -34,7 +34,7 @@ def add_atencion(data, user):
                 atencion = Atencion.objects.create(
                     ambulancia=ambulancia, despacho=despacho,
                     hora_salida=despacho_data['hora_salida'],
-                    hora_llegada=despacho_data['hora_llegada'],
+                    hora_llegada=despacho_data.get('hora_llegada'),
                     rut_registrador=user, rut_receptor=valid_data["rut_receptor"]
                 )
 
