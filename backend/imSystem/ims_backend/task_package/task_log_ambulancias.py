@@ -6,9 +6,7 @@ from ims_backend.models import LogAuditoria, Personal, Ambulancia
 def mover_elemento_log(self,data):
     try:
         user = Personal.objects.get(rut=data["rut"])
-        log = f"""El usuario con rut: {user.rut}, movió desde {data["update_from"]} -> {data["update_to"]}, el insumo con id: 
-        {data["presentacion_id"]} la cantidad de: {data["cantidad"]}
-        """
+        log = f"El usuario con RUT {user.rut} trasladó {data['cantidad']} unidades del insumo con ID {data['presentacion_id']} desde {data['update_from']} hacia {data['update_to']}."
         LogAuditoria.objects.create(tipo="ambulancia",usuario_id=user.id, rut_usuario=user.rut,
                                             descripcion=log)
     except Exception as exc:
@@ -19,8 +17,7 @@ def mover_elemento_log(self,data):
 def agregar_elemento_log(self, data):
     try:
         ids = [str(p) for p in data["added"]]
-        log = f"""El usuario con id: {data["user"]} y rut: {data["rut"]}, agregó los siguientes elementos
-        con ids: {','.join(ids)}"""
+        log = f"El usuario con RUT {data['rut']} (ID: {data['user']}) agregó los siguientes elementos con IDs: {', '.join(ids)}."
         LogAuditoria.objects.create(
             tipo="ambulancia",usuario_id = data["user"], rut_usuario=data["rut"], descripcion=log
         )
@@ -30,10 +27,7 @@ def agregar_elemento_log(self, data):
 def agregar_ambulancia_log(self, data):
     try:
         user = Personal.objects.get(id=data["user_id"])
-        log = (
-            f"El usuario con rut {user.rut} registró la ambulancia "
-            f"patente {data['patente']} modelo {data['modelo']} con id {data['ambulancia_id']}."
-        )
+        log = f"El usuario con RUT {user.rut} registró la ambulancia con patente {data['patente']}, modelo {data['modelo']} e ID {data['ambulancia_id']}."
         LogAuditoria.objects.create(
             tipo="ambulancia", usuario_id=user.id, rut_usuario=user.rut, descripcion=log
         )
@@ -45,7 +39,7 @@ def actualizar_estados(self, conid, ambid):
     try:
         personal = Personal.objects.get(id = conid)
         ambulancia = Ambulancia.objects.get(id=ambid)
-        log = f"El usuario: {personal.id} actualizó el estado de la ambulancia: {ambulancia.patente} a -> {ambulancia.estado_disponibilidad}"
+        log = f"El usuario con RUT {personal.rut} (ID: {personal.id}) actualizó el estado de disponibilidad de la ambulancia con patente {ambulancia.patente} a '{ambulancia.estado_disponibilidad}'."
         LogAuditoria.objects.create(
             tipo="ambulancia", usuario_id = personal.id, rut_usuario= personal.rut, descripcion=log
         )
