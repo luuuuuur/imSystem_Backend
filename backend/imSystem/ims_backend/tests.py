@@ -1181,7 +1181,7 @@ def modo_cancelar_despacho(s: requests.Session):
             print("  Cancelado.")
             continue
 
-        r = s.patch(CANCELAR_URL, json={"despacho_id": despacho_id}, headers=_csrf_headers(s))
+        r = s.patch(CANCELAR_URL, params={"cancel": despacho_id}, headers=_csrf_headers(s))
         ok = r.status_code < 400
         tag = "OK " if ok else "ERR"
         print(f"  [{tag}] HTTP {r.status_code}  →  {r.text[:300]}")

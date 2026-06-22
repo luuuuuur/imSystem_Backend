@@ -616,11 +616,11 @@ class CancelarDespacho(APIView):
     permission_classes = [ControlProfileOnly & MFAVerified]
 
     def patch(self, request):
-        serializer = CancelarDespachoSerializer(data=request.data)
+        serializer = CancelarDespachoSerializer(data=request.query_params)
         if not serializer.is_valid():
             raise BadRequestException(detail=serializer.errors)
 
-        despacho = get_object_or_404(Despacho, id=serializer.validated_data['despacho_id'])
+        despacho = get_object_or_404(Despacho, id=serializer.validated_data['cancel'])
 
         if despacho.estado in (Despacho.FINALIZADO, Despacho.CANCELADO):
             raise ConflictException(detail="El despacho no puede ser cancelado en su estado actual.")
