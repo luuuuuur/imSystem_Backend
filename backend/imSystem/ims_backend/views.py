@@ -70,7 +70,7 @@ from ims_backend.toolbox.Personal_package.set_device_token import set_device
 # Permiso custom: restringe acceso a usuarios con rol control
 # Usar en vistas donde solo personal de control debe operar (como por ejemplo asignar trabajores, despachos etc)
 from ims_backend.auth_package.permissions import (ControlProfileOnly,
-                                                  NurseProfileOnly, MedicProfileOnly, MFAVerified, DriverProfileOnly,
+                                                  NurseProfileOnly, MedicProfileOnly, MFAVerified,
                                                   MFAAndAnyProfile, MFAAndClinicalProfile, MFAAndMedicalStaff,
                                                   MFAAndFieldStaff)
 
@@ -688,9 +688,9 @@ class FHIR(APIView):
         
 class CambiarEstadoAmbulancia(APIView):
     http_method_names = ['patch']
-    permission_classes = [MFAVerified & DriverProfileOnly]
+    permission_classes = [ControlProfileOnly & MFAVerified]
     def patch(self, request):
-        if cambiar_estado.cambiar_estado(request.query_params):
+        if cambiar_estado.cambiar_estado(request.query_params, request.user.rut):
             return Response({}, status=status.HTTP_200_OK)
 
 

@@ -236,7 +236,6 @@ class AddAmbulanciaSerializer(serializers.Serializer):
 
 class CambiarEstadoAmbulancia(serializers.Serializer):
     ambid = serializers.IntegerField()
-    conid = serializers.IntegerField()
     estado = serializers.ChoiceField(Ambulancia.ESTADOS)
 
 class VerificarDocumentoSerializer(serializers.Serializer):

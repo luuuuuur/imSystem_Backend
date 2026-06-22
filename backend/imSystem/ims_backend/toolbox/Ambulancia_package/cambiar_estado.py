@@ -1,5 +1,5 @@
 from ims_backend.serializers import CambiarEstadoAmbulancia
-from ims_backend.models import Ambulancia, Personal
+from ims_backend.models import Ambulancia
 from django.db import transaction
 from ims_backend.task_package.task_notificaciones import notificacion
 from ims_backend.task_package.task_log_ambulancias import actualizar_estados
@@ -15,18 +15,16 @@ def change_despacho_status(type, ambulancia: Ambulancia):
         ambulancia.save(update_fields=["estado_disponibilidad"])
         
 #TRANSACTION ON COMMIT -> LOG AUDITORIA, NOTIFICACION #SE CAMBIA ESTADO
-def cambiar_estado(query_params):
+def cambiar_estado(query_params, rut):
     serializer = CambiarEstadoAmbulancia(data=query_params)
     if serializer.is_valid():
         valid_data = serializer.validated_data
         try:
-            personal = Personal.objects.get(id=valid_data["conid"])
             ambulancia = Ambulancia.objects.get(id=valid_data["ambid"])
             estado = valid_data["estado"]
             with transaction.atomic():
                 change_despacho_status(estado, ambulancia)
-            transaction.on_commit(lambda: notificacion.delay(type=estado, patente=ambulancia.patente, estado=estado, id=personal.id))
-            transaction.on_commit(lambda: actualizar_estados.delay(conid=personal.id, ambid=ambulancia.id))
+            transaction.on_commit(lambda: actualizar_estados.delay(rut=rut, ambid=ambulancia.id))
             return True
         except Exception:
             raise InternalServerException

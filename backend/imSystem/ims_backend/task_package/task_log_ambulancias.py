@@ -35,9 +35,9 @@ def agregar_ambulancia_log(self, data):
         raise self.retry(exc=exc)
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
-def actualizar_estados(self, conid, ambid):
+def actualizar_estados(self, rut, ambid):
     try:
-        personal = Personal.objects.get(id = conid)
+        personal = Personal.objects.get(rut=rut)
         ambulancia = Ambulancia.objects.get(id=ambid)
         log = f"El usuario con RUT {personal.rut} (ID: {personal.id}) actualizó el estado de disponibilidad de la ambulancia con patente {ambulancia.patente} a '{ambulancia.estado_disponibilidad}'."
         LogAuditoria.objects.create(
@@ -89,3 +89,29 @@ def log_senal_outofservice(self, usuario_id, patente):
         )
     except Exception as exc:
         raise self.retry(exc=exc)
+
+def _log_senal_equipo(self, usuario_id, grupo_nombre, despacho_id, descripcion):
+    try:
+        usuario = Personal.objects.get(id=usuario_id)
+        LogAuditoria.objects.create(
+            tipo="ambulancia", usuario_id=usuario.id, rut_usuario=usuario.rut,
+            descripcion=descripcion.format(grupo=grupo_nombre, despacho_id=despacho_id)
+        )
+    except Exception as exc:
+        raise self.retry(exc=exc)
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def log_senal_disponible(self, usuario_id, grupo_nombre, despacho_id):
+    _log_senal_equipo(self, usuario_id, grupo_nombre, despacho_id, "El Grupo {grupo} notificó que está disponible para un nuevo despacho.")
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def log_senal_en_camino(self, usuario_id, grupo_nombre, despacho_id):
+    _log_senal_equipo(self, usuario_id, grupo_nombre, despacho_id, "El Grupo {grupo} notificó que está en camino al destino del despacho: {despacho_id}.")
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def log_senal_en_destino(self, usuario_id, grupo_nombre, despacho_id):
+    _log_senal_equipo(self, usuario_id, grupo_nombre, despacho_id, "El Grupo {grupo} notificó que ha llegado al destino del despacho: {despacho_id}.")
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def log_senal_regresando(self, usuario_id, grupo_nombre, despacho_id):
+    _log_senal_equipo(self, usuario_id, grupo_nombre, despacho_id, "El Grupo {grupo} notificó que está regresando a base desde el despacho: {despacho_id}.")

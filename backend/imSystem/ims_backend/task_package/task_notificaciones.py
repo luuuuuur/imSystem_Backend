@@ -11,6 +11,10 @@ class Senal:
     AMBULANCIA   = 'senal_ambulancia'
     OCUPADA      = 'senal_ocupada'
     OUTOFSERVICE = 'senal_outofservice'
+    DISPONIBLE   = 'senal_disponible'
+    EN_CAMINO    = 'senal_en_camino'
+    EN_DESTINO    = 'senal_en_destino'
+    REGRESANDO   = 'senal_regresando'
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +88,11 @@ def _enviar_estado_ambulancia(patente, estado, id):
     logger.info(f'[FCM] Estado ambulancia: Se cambió el estado de la ambulancia con patente {patente}, tokens={len(token)}')
     _send(token=token, _title="Cambio de estado de ambulancia", _body=f"La ambulancia con patente {patente} ha actualizado su estado a '{estado}'. Acción registrada por el usuario con ID {id}.")
 
+def _enviar_senal_equipo(titulo, cuerpo, grupo_nombre):
+    token = _tokens_por_rol('control')
+    logger.info(f'[FCM] senal_equipo: titulo={titulo}, grupo={grupo_nombre}, tokens={len(token)}')
+    _send(token=token, _title=titulo, _body=cuerpo)
+
 def _enviar_senal_otro(mensaje, usuario_id):
     token = _tokens_por_rol('control')
     logger.info(f'[FCM] senal_otro: usuario_id={usuario_id}, tokens={len(token)}')
@@ -140,6 +149,14 @@ def notificacion(self, type, **kwargs):
                 _enviar_senal_ambulancia_ocupada(kwargs["patente"], kwargs["usuario_id"])
             case Senal.OUTOFSERVICE:
                 _enviar_senal_outofservice(kwargs["patente"], kwargs["usuario_id"])
+            case Senal.DISPONIBLE:
+                _enviar_senal_equipo("Equipo disponible", f"El Grupo {kwargs['grupo_nombre']} está disponible para un nuevo despacho.", kwargs["grupo_nombre"])
+            case Senal.EN_CAMINO:
+                _enviar_senal_equipo("Equipo en camino", f"El Grupo {kwargs['grupo_nombre']} está en camino al destino del despacho: {kwargs['despacho_id']}.", kwargs["grupo_nombre"])
+            case Senal.EN_DESTINO:
+                _enviar_senal_equipo("Equipo en destino", f"El Grupo {kwargs['grupo_nombre']} ha llegado al destino del despacho: {kwargs['despacho_id']}.", kwargs["grupo_nombre"])
+            case Senal.REGRESANDO:
+                _enviar_senal_equipo("Equipo regresando", f"El Grupo {kwargs['grupo_nombre']} está regresando a base desde el despacho: {kwargs['despacho_id']}.", kwargs["grupo_nombre"])
             case _:
                 logger.warning(f'[FCM] Tipo de notificacion no reconocido: {type}')
                 return

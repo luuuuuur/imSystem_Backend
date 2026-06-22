@@ -1130,15 +1130,27 @@ def senal_outofservice(s: requests.Session):
     _notif_result(r)
 
 
+def _senal_equipo(s: requests.Session, tipo: str, label: str):
+    print(f"\n-- Señal: {label} --")
+    r = s.post(SENALES_URL, params={"type": tipo}, headers=_csrf_headers(s))
+    _notif_result(r)
+
+
 def modo_senales(s: requests.Session):
     while True:
         print(f"\n{'=' * 60}")
         print("  SEÑALES — elige cuál probar")
         print("=" * 60)
-        print("  [1] Otro...              → mensaje libre a control")
-        print("  [2] Ambulancia           → marca 'En preparación' + notifica control")
-        print("  [3] Ocupada              → marca 'Actualmente en despacho' + notifica control")
-        print("  [4] Fuera de servicio    → falla mecánica, marca 'Fuera de servicio' + notifica control")
+        print("  -- Ambulancia --")
+        print("  [1] Otro...           → mensaje libre a control")
+        print("  [2] Falla ambulancia  → notifica a control (sin cambio de estado)")
+        print("  [3] Ambulancia ocupada → notifica a control (sin cambio de estado)")
+        print("  [4] Fuera de servicio → falla mecánica, notifica a control (sin cambio de estado)")
+        print("  -- Estado del equipo --")
+        print("  [5] Disponible        → equipo listo para nuevo despacho")
+        print("  [6] En camino         → equipo en camino al destino")
+        print("  [7] En escena         → equipo llegó a la escena")
+        print("  [8] Regresando        → equipo regresando a base")
         print("  [q] Volver al menú principal")
         opcion = input("\nOpción: ").strip().lower()
 
@@ -1146,6 +1158,10 @@ def modo_senales(s: requests.Session):
         elif opcion == "2": senal_ambulancia(s)
         elif opcion == "3": senal_ocupada(s)
         elif opcion == "4": senal_outofservice(s)
+        elif opcion == "5": _senal_equipo(s, "senal_disponible", "DISPONIBLE")
+        elif opcion == "6": _senal_equipo(s, "senal_en_camino",  "EN CAMINO")
+        elif opcion == "7": _senal_equipo(s, "senal_en_destino", "EN DESTINO")
+        elif opcion == "8": _senal_equipo(s, "senal_regresando", "REGRESANDO")
         elif opcion == "q": break
         else:               print("  Opción no válida.")
 
