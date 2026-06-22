@@ -1130,10 +1130,22 @@ def senal_outofservice(s: requests.Session):
     _notif_result(r)
 
 
-def _senal_equipo(s: requests.Session, tipo: str, label: str):
-    print(f"\n-- Señal: {label} --")
-    print("  El servidor resolverá automáticamente el grupo y despacho activo del usuario autenticado.")
+def _senal_equipo_global(s: requests.Session, tipo: str, label: str):
+    print(f"\n-- Señal global: {label} --")
+    print("  El servidor resolverá el grupo del usuario autenticado automáticamente.")
     r = s.post(SENALES_URL, params={"type": tipo}, headers=_csrf_headers(s))
+    _notif_result(r)
+
+
+def _senal_equipo_despacho(s: requests.Session, tipo: str, label: str):
+    print(f"\n-- Señal de despacho: {label} --")
+    entrada = input("  despacho_id: ").strip()
+    try:
+        despacho_id = int(entrada)
+    except ValueError:
+        print("  ID inválido, cancelando.")
+        return
+    r = s.post(SENALES_URL, params={"type": tipo, "despacho_id": despacho_id}, headers=_csrf_headers(s))
     _notif_result(r)
 
 
@@ -1142,17 +1154,17 @@ def modo_senales(s: requests.Session):
         print(f"\n{'=' * 60}")
         print("  SEÑALES — elige cuál probar")
         print("=" * 60)
-        print("  -- Ambulancia --")
+        print("  -- Globales (sin despacho) --")
         print("  [1] Otro...           → mensaje libre a control")
         print("  [2] Falla ambulancia  → notifica a control (sin cambio de estado)")
         print("  [3] Ambulancia ocupada → notifica a control (sin cambio de estado)")
-        print("  [4] Fuera de servicio → falla mecánica, notifica a control (sin cambio de estado)")
-        print("  -- Estado del equipo --")
+        print("  [4] Fuera de servicio → falla mecánica, notifica a control")
         print("  [5] Disponible        → equipo listo para nuevo despacho")
-        print("  [6] En camino         → equipo en camino al destino")
-        print("  [7] En destino        → equipo llegó al destino")
-        print("  [8] Regresando        → equipo regresando a base")
-        print("  Nota: las señales de equipo [5-8] derivan grupo y despacho del usuario autenticado.")
+        print("  [6] Regresando        → equipo regresando a base")
+        print("  -- Vinculadas a despacho (requieren despacho_id) --")
+        print("  [7] En camino         → equipo en camino al destino del despacho")
+        print("  [8] En destino        → equipo llegó al destino del despacho")
+        print("  [9] Operando          → equipo comenzó a operar en el despacho")
         print("  [q] Volver al menú principal")
         opcion = input("\nOpción: ").strip().lower()
 
@@ -1160,10 +1172,11 @@ def modo_senales(s: requests.Session):
         elif opcion == "2": senal_ambulancia(s)
         elif opcion == "3": senal_ocupada(s)
         elif opcion == "4": senal_outofservice(s)
-        elif opcion == "5": _senal_equipo(s, "senal_disponible", "DISPONIBLE")
-        elif opcion == "6": _senal_equipo(s, "senal_en_camino",  "EN CAMINO")
-        elif opcion == "7": _senal_equipo(s, "senal_en_destino", "EN DESTINO")
-        elif opcion == "8": _senal_equipo(s, "senal_regresando", "REGRESANDO")
+        elif opcion == "5": _senal_equipo_global(s,   "senal_disponible", "DISPONIBLE")
+        elif opcion == "6": _senal_equipo_global(s,   "senal_regresando", "REGRESANDO")
+        elif opcion == "7": _senal_equipo_despacho(s, "senal_en_camino",  "EN CAMINO")
+        elif opcion == "8": _senal_equipo_despacho(s, "senal_en_destino", "EN DESTINO")
+        elif opcion == "9": _senal_equipo_despacho(s, "senal_operando",   "OPERANDO")
         elif opcion == "q": break
         else:               print("  Opción no válida.")
 

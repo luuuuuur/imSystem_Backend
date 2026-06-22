@@ -13,7 +13,8 @@ class Senal:
     OUTOFSERVICE = 'senal_outofservice'
     DISPONIBLE   = 'senal_disponible'
     EN_CAMINO    = 'senal_en_camino'
-    EN_DESTINO    = 'senal_en_destino'
+    EN_DESTINO   = 'senal_en_destino'
+    OPERANDO     = 'senal_operando'
     REGRESANDO   = 'senal_regresando'
 
 logger = logging.getLogger(__name__)
@@ -155,8 +156,10 @@ def notificacion(self, type, **kwargs):
                 _enviar_senal_equipo("Equipo en camino", f"El Grupo {kwargs['grupo_nombre']} está en camino al destino del despacho: {kwargs['despacho_id']}.", kwargs["grupo_nombre"])
             case Senal.EN_DESTINO:
                 _enviar_senal_equipo("Equipo en destino", f"El Grupo {kwargs['grupo_nombre']} ha llegado al destino del despacho: {kwargs['despacho_id']}.", kwargs["grupo_nombre"])
+            case Senal.OPERANDO:
+                _enviar_senal_equipo("Equipo operando", f"El Grupo {kwargs['grupo_nombre']} ha comenzado a operar en el despacho: {kwargs['despacho_id']}.", kwargs["grupo_nombre"])
             case Senal.REGRESANDO:
-                _enviar_senal_equipo("Equipo regresando", f"El Grupo {kwargs['grupo_nombre']} está regresando a base desde el despacho: {kwargs['despacho_id']}.", kwargs["grupo_nombre"])
+                _enviar_senal_equipo("Equipo regresando", f"El Grupo {kwargs['grupo_nombre']} está regresando a base.", kwargs["grupo_nombre"])
             case _:
                 logger.warning(f'[FCM] Tipo de notificacion no reconocido: {type}')
                 return

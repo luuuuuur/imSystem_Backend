@@ -113,5 +113,9 @@ def log_senal_en_destino(self, usuario_id, grupo_nombre, despacho_id):
     _log_senal_equipo(self, usuario_id, grupo_nombre, despacho_id, "El Grupo {grupo} notificó que ha llegado al destino del despacho: {despacho_id}.")
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def log_senal_operando(self, usuario_id, grupo_nombre, despacho_id):
+    _log_senal_equipo(self, usuario_id, grupo_nombre, despacho_id, "El Grupo {grupo} notificó que ha comenzado a operar en el despacho: {despacho_id}.")
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def log_senal_regresando(self, usuario_id, grupo_nombre, despacho_id):
-    _log_senal_equipo(self, usuario_id, grupo_nombre, despacho_id, "El Grupo {grupo} notificó que está regresando a base desde el despacho: {despacho_id}.")
+    _log_senal_equipo(self, usuario_id, grupo_nombre, despacho_id, "El Grupo {grupo} notificó que está regresando a base.")

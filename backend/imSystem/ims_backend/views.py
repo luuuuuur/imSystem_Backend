@@ -773,6 +773,8 @@ class SenalAPI(APIView):
     def post(self, request):
         from ims_backend.toolbox.Senales_package.signal_handler import handle_signal
         tipo = request.query_params.get('type')
+        raw_did = request.query_params.get('despacho_id')
+        despacho_id = int(raw_did) if raw_did and raw_did.isdigit() else None
         with transaction.atomic():
-            handle_signal(tipo, request.data, request.user)
+            handle_signal(tipo, request.data, request.user, despacho_id=despacho_id)
         return Response({}, status=status.HTTP_200_OK)

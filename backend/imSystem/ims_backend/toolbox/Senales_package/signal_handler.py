@@ -1,10 +1,11 @@
 from django.db import transaction
-from ims_backend.models import Ambulancia, SuscritosAGrupo, DespachoPersonal, Despacho
+from ims_backend.models import Ambulancia, SuscritosAGrupo, DespachoPersonal
 from ims_backend.serializers import SenalOtroSerializer, SenalPatenteSerializer
 from ims_backend.task_package.task_notificaciones import notificacion, Senal
 from ims_backend.task_package.task_log_ambulancias import (
     log_senal_otro, log_senal_ambulancia, log_senal_ocupada, log_senal_outofservice,
-    log_senal_disponible, log_senal_en_camino, log_senal_en_destino, log_senal_regresando,
+    log_senal_disponible, log_senal_en_camino, log_senal_en_destino,
+    log_senal_operando, log_senal_regresando,
 )
 from ims_backend.toolbox.exceptions import BadRequestException, NotFoundException
 
@@ -14,33 +15,38 @@ _SENALES_AMBULANCIA = {
     Senal.OUTOFSERVICE: log_senal_outofservice,
 }
 
-_SENALES_EQUIPO = {
-    Senal.DISPONIBLE: log_senal_disponible,
+_SENALES_DESPACHO = {
     Senal.EN_CAMINO:  log_senal_en_camino,
-    Senal.EN_DESTINO:  log_senal_en_destino,
+    Senal.EN_DESTINO: log_senal_en_destino,
+    Senal.OPERANDO:   log_senal_operando,
+}
+
+_SENALES_GLOBAL = {
+    Senal.DISPONIBLE: log_senal_disponible,
     Senal.REGRESANDO: log_senal_regresando,
 }
 
 
-def _obtener_contexto_equipo(usuario):
-    grupo_nombre = f"Usuario {usuario.id}"
-    despacho_id = None
+def _obtener_grupo_desde_despacho(despacho_id):
+    try:
+        dp = DespachoPersonal.objects.select_related('grupo').filter(despacho_id=despacho_id).first()
+        if dp is not None:
+            return dp.grupo.nombre_grupo
+    except Exception:
+        pass
+    return f"Despacho {despacho_id}"
+
+
+def _obtener_grupo_desde_usuario(usuario):
     try:
         suscripcion = SuscritosAGrupo.objects.select_related('grupo').filter(
             personal=usuario, fecha_salida=None
         ).first()
-        if suscripcion is None:
-            return grupo_nombre, despacho_id
-        grupo_nombre = suscripcion.grupo.nombre_grupo
-        dp = DespachoPersonal.objects.select_related('despacho').filter(
-            grupo=suscripcion.grupo,
-            despacho__estado__in=[Despacho.ASIGNADO, Despacho.EMERGENCIA]
-        ).order_by('-id').first()
-        if dp is not None:
-            despacho_id = dp.despacho.id
+        if suscripcion is not None:
+            return suscripcion.grupo.nombre_grupo
     except Exception:
         pass
-    return grupo_nombre, despacho_id
+    return f"Usuario {usuario.id}"
 
 
 def _verificar_ambulancia(patente):
@@ -50,7 +56,7 @@ def _verificar_ambulancia(patente):
         raise NotFoundException(detail=f"No existe ambulancia con patente '{patente}'.")
 
 
-def handle_signal(tipo, payload, usuario):
+def handle_signal(tipo, payload, usuario, despacho_id=None):
     uid = usuario.id
 
     match tipo:
@@ -72,11 +78,22 @@ def handle_signal(tipo, payload, usuario):
             transaction.on_commit(lambda: notificacion.delay(type=tipo, patente=patente, usuario_id=uid))
             transaction.on_commit(lambda: _log_task.delay(usuario_id=uid, patente=patente))
 
-        case Senal.DISPONIBLE | Senal.EN_CAMINO | Senal.EN_DESTINO | Senal.REGRESANDO:
-            grupo_nombre, despacho_id = _obtener_contexto_equipo(usuario)
-            _log_task = _SENALES_EQUIPO[tipo]
-            transaction.on_commit(lambda: notificacion.delay(type=tipo, grupo_nombre=grupo_nombre, despacho_id=despacho_id))
-            transaction.on_commit(lambda: _log_task.delay(usuario_id=uid, grupo_nombre=grupo_nombre, despacho_id=despacho_id))
+        case Senal.EN_CAMINO | Senal.EN_DESTINO | Senal.OPERANDO:
+            if not despacho_id:
+                raise BadRequestException(detail="Se requiere el parámetro 'despacho_id' para esta señal.")
+            grupo_nombre = _obtener_grupo_desde_despacho(despacho_id)
+            _log_task = _SENALES_DESPACHO[tipo]
+            _did = despacho_id
+            _gn  = grupo_nombre
+            transaction.on_commit(lambda: notificacion.delay(type=tipo, grupo_nombre=_gn, despacho_id=_did))
+            transaction.on_commit(lambda: _log_task.delay(usuario_id=uid, grupo_nombre=_gn, despacho_id=_did))
+
+        case Senal.DISPONIBLE | Senal.REGRESANDO:
+            grupo_nombre = _obtener_grupo_desde_usuario(usuario)
+            _log_task = _SENALES_GLOBAL[tipo]
+            _gn = grupo_nombre
+            transaction.on_commit(lambda: notificacion.delay(type=tipo, grupo_nombre=_gn, despacho_id=None))
+            transaction.on_commit(lambda: _log_task.delay(usuario_id=uid, grupo_nombre=_gn, despacho_id=None))
 
         case _:
             raise BadRequestException(detail="Tipo de señal no reconocido.")
