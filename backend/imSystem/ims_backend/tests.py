@@ -1132,6 +1132,7 @@ def senal_outofservice(s: requests.Session):
 
 def _senal_equipo(s: requests.Session, tipo: str, label: str):
     print(f"\n-- Señal: {label} --")
+    print("  El servidor resolverá automáticamente el grupo y despacho activo del usuario autenticado.")
     r = s.post(SENALES_URL, params={"type": tipo}, headers=_csrf_headers(s))
     _notif_result(r)
 
@@ -1149,8 +1150,9 @@ def modo_senales(s: requests.Session):
         print("  -- Estado del equipo --")
         print("  [5] Disponible        → equipo listo para nuevo despacho")
         print("  [6] En camino         → equipo en camino al destino")
-        print("  [7] En escena         → equipo llegó a la escena")
+        print("  [7] En destino        → equipo llegó al destino")
         print("  [8] Regresando        → equipo regresando a base")
+        print("  Nota: las señales de equipo [5-8] derivan grupo y despacho del usuario autenticado.")
         print("  [q] Volver al menú principal")
         opcion = input("\nOpción: ").strip().lower()
 

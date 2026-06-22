@@ -26,16 +26,19 @@ def _obtener_contexto_equipo(usuario):
     grupo_nombre = f"Usuario {usuario.id}"
     despacho_id = None
     try:
-        suscripcion = SuscritosAGrupo.objects.select_related('grupo').get(
+        suscripcion = SuscritosAGrupo.objects.select_related('grupo').filter(
             personal=usuario, fecha_salida=None
-        )
+        ).first()
+        if suscripcion is None:
+            return grupo_nombre, despacho_id
         grupo_nombre = suscripcion.grupo.nombre_grupo
         dp = DespachoPersonal.objects.select_related('despacho').filter(
             grupo=suscripcion.grupo,
             despacho__estado__in=[Despacho.ASIGNADO, Despacho.EMERGENCIA]
-        ).latest('id')
-        despacho_id = dp.despacho.id
-    except (SuscritosAGrupo.DoesNotExist, DespachoPersonal.DoesNotExist):
+        ).order_by('-id').first()
+        if dp is not None:
+            despacho_id = dp.despacho.id
+    except Exception:
         pass
     return grupo_nombre, despacho_id
 
