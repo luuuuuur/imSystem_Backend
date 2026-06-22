@@ -243,6 +243,9 @@ class VerificarDocumentoSerializer(serializers.Serializer):
     hash  = serializers.CharField(max_length=64)
     firma = serializers.CharField(required=False)
 
+class CancelarDespachoSerializer(serializers.Serializer):
+    despacho_id = serializers.IntegerField()
+
 class SenalOtroSerializer(serializers.Serializer):
     mensaje = serializers.CharField(max_length=500)
 

@@ -69,6 +69,11 @@ def _enviar_atencion_registrada(fecha):
     logger.info(f'[FCM] atencion_registrada: fecha={fecha}, tokens={len(token)}')
     _send(token=token, _title="Nueva atención registrada", _body=f"Se ha registrado una nueva atención el {fecha}. Ingresa al sistema para revisar los detalles del caso.")
 
+def _enviar_despacho_cancelado(grupo_id, despacho_id):
+    token = _tokens_por_grupo(grupo_id)
+    logger.info(f'[FCM] despacho_cancelado: grupo_id={grupo_id}, despacho_id={despacho_id}, tokens={len(token)}')
+    _send(token=token, _title="Despacho cancelado", _body=f"El despacho con ID {despacho_id} ha sido cancelado por control. Regresa a base.")
+
 def _enviar_despacho_emergencia(dir, grupo_id):
     token = _tokens_por_grupo(grupo_id)
     logger.info(f'[FCM] emergencia: grupo_id={grupo_id}, dir={dir}, tokens={len(token)}')
@@ -111,6 +116,8 @@ def notificacion(self, type, **kwargs):
                 _enviar_despacho_programado(kwargs["grupo_id"], kwargs["fecha"])
             case Despacho.FINALIZADO:
                 _enviar_despacho_finalizado(kwargs["despacho_id"])
+            case Despacho.CANCELADO:
+                _enviar_despacho_cancelado(kwargs["grupo_id"], kwargs["despacho_id"])
             case Atencion.REGISTRADA:
                 _enviar_atencion_registrada(kwargs["fecha"])
             case Despacho.EMERGENCIA:

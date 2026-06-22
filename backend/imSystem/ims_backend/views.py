@@ -26,6 +26,7 @@ from .serializers import AuthenticationSerializer
 from .serializers import ProgramarDespachoSerializer
 from .serializers import DeviceToken
 from .serializers import AddAmbulanciaSerializer
+from .serializers import CancelarDespachoSerializer
 # ─── MODELS ──────────────────────────────────────────────────────────────────
 from .models import Personal
 from .models import Paciente
@@ -52,7 +53,7 @@ from ims_backend.toolbox.exceptions import (ConflictException, BadRequestExcepti
                                               UnAuthorizedException, ForbiddenException)
 from ims_backend.task_package.task_log_grupos import crear_grupo_log, agregar_miembros_log,actualizar_estado_miembros_log
 from ims_backend.task_package.task_log_paciente import agregar_paciente_log
-from ims_backend.task_package.task_log_despacho import crear_despacho_log, asignar_despacho_log, cambiar_estado_log
+from ims_backend.task_package.task_log_despacho import crear_despacho_log, asignar_despacho_log, cambiar_estado_log, cancelar_despacho_log
 from ims_backend.task_package.task_log_personal import agregar_personal_log
 from ims_backend.task_package.task_log_ambulancias import agregar_ambulancia_log
 from ims_backend.toolbox.Fhir_package.export_r4 import export_hl7
@@ -609,6 +610,41 @@ class ProgramarDespacho(APIView):
             except Exception as e: return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else: return Response({}, status=status.HTTP_400_BAD_REQUEST)
         
+
+class CancelarDespacho(APIView):
+    http_method_names = ['patch']
+    permission_classes = [ControlProfileOnly & MFAVerified]
+
+    def patch(self, request):
+        serializer = CancelarDespachoSerializer(data=request.data)
+        if not serializer.is_valid():
+            raise BadRequestException(detail=serializer.errors)
+
+        despacho = get_object_or_404(Despacho, id=serializer.validated_data['despacho_id'])
+
+        if despacho.estado in (Despacho.FINALIZADO, Despacho.CANCELADO):
+            raise ConflictException(detail="El despacho no puede ser cancelado en su estado actual.")
+
+        despacho_personal = DespachoPersonal.objects.filter(despacho=despacho).select_related('grupo').first()
+        grupo_id = despacho_personal.grupo.id if despacho_personal else None
+
+        log_data = {
+            "rut": request.user.rut,
+            "user_id": request.user.id,
+            "despacho_id": despacho.id,
+            "grupo_id": grupo_id,
+        }
+
+        with transaction.atomic():
+            change_despacho_status(type=Despacho.CANCELADO, despacho=despacho)
+            transaction.on_commit(lambda: cancelar_despacho_log.delay(data=log_data))
+            if grupo_id:
+                transaction.on_commit(lambda: notificacion.delay(
+                    type=Despacho.CANCELADO, grupo_id=grupo_id, despacho_id=despacho.id
+                ))
+
+        return Response({}, status=status.HTTP_200_OK)
+
 
 # API para obtener TODOS Los despachos sin necesidad de incluir al usuario per se
 class AllDespachos(APIView):

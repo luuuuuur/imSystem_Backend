@@ -26,3 +26,13 @@ def cambiar_estado_log(self, data):
         LogAuditoria.objects.create(tipo='despacho', usuario_id=data["user_id"], rut_usuario=data["rut"], descripcion=log)
     except Exception as exc:
         raise self.retry(exc=exc)
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def cancelar_despacho_log(self, data):
+    try:
+        log = f"El usuario con RUT {data['rut']} (ID: {data['user_id']}) canceló el despacho con ID {data['despacho_id']}."
+        if data.get("grupo_id"):
+            log += f" El grupo con ID {data['grupo_id']} fue notificado."
+        LogAuditoria.objects.create(tipo='despacho', usuario_id=data["user_id"], rut_usuario=data["rut"], descripcion=log)
+    except Exception as exc:
+        raise self.retry(exc=exc)

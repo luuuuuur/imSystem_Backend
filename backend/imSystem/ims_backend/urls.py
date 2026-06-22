@@ -29,6 +29,7 @@ urlpatterns = [
     path("api/despachos/add/", CreateDespacho.as_view(), name="CreateDespacho"),
     path("api/despachos/asignar/", AsignarDespacho.as_view(), name="AsignarDespacho"),
     path("api/despachos/programar/",ProgramarDespacho.as_view(), name="ProgramarDespacho"),
+    path("api/despachos/cancelar/", CancelarDespacho.as_view(), name="CancelarDespacho"),
     path("api/ambulancias/", AmbulanciaAPI.as_view(), name="AmbulanciaAPI"),
     path("api/ambulancias/add/", AddAmbulanciaAPI.as_view(), name="AddAmbulanciaAPI"),
     path("api/ambulancias/estados/",  CambiarEstadoAmbulancia.as_view(), name=" CambiarEstadoAmbulancia"),
