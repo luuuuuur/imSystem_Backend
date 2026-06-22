@@ -52,7 +52,7 @@ def log_senal_otro(self, usuario_id, mensaje):
         usuario = Personal.objects.get(id=usuario_id)
         log = f"El usuario con RUT {usuario.rut} (ID: {usuario.id}) envió una señal de tipo 'Otro' con el siguiente mensaje: \"{mensaje}\"."
         LogAuditoria.objects.create(
-            tipo="ambulancia", usuario_id=usuario.id, rut_usuario=usuario.rut, descripcion=log
+            tipo="informacion", usuario_id=usuario.id, rut_usuario=usuario.rut, descripcion=log
         )
     except Exception as exc:
         raise self.retry(exc=exc)
@@ -94,7 +94,7 @@ def _log_senal_equipo(self, usuario_id, grupo_nombre, despacho_id, descripcion):
     try:
         usuario = Personal.objects.get(id=usuario_id)
         LogAuditoria.objects.create(
-            tipo="ambulancia", usuario_id=usuario.id, rut_usuario=usuario.rut,
+            tipo="informacion", usuario_id=usuario.id, rut_usuario=usuario.rut,
             descripcion=descripcion.format(grupo=grupo_nombre, despacho_id=despacho_id)
         )
     except Exception as exc:

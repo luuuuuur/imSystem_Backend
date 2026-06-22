@@ -329,8 +329,9 @@ class LogAuditoria(models.Model):
         ('inventario', 'Inventario'),
         ('ambulancia', 'Ambulancia'),
         ('despacho', 'Despacho'),
-        ('grupo','Grupo'),
-        ('paciente','Paciente')
+        ('grupo', 'Grupo'),
+        ('paciente', 'Paciente'),
+        ('informacion', 'Información'),
     ]
     tipo = models.CharField(max_length=20, choices=TIPOS, default="placeholder")
     atencion = models.ForeignKey(Atencion, on_delete=models.PROTECT, null=True, blank=True)
