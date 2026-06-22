@@ -183,6 +183,7 @@ class PayloadSerializer(serializers.Serializer):
     cronologia = CronologiaSerializer()
     insumos_utilizados = InsumoUtilizadoSerializer(many=True)
     rut_receptor = serializers.CharField()
+    paciente = PacienteSerializer()
 class AuthenticationSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField()

@@ -2,7 +2,7 @@ from django.db import transaction
 from ims_backend.toolbox import exceptions
 from ims_backend.serializers import PayloadSerializer
 from ims_backend.models import (Despacho,Ambulancia,Atencion,SignosVitales,
-Cronologia,DetalleInsumoAtencion,PreInforme,StockInsumo,Documento)
+Cronologia,DetalleInsumoAtencion,PreInforme,StockInsumo,Documento, Paciente)
 from django.shortcuts import get_object_or_404
 from django.forms.models import model_to_dict
 from ims_backend.task_package.task_s3 import enviar_s3
@@ -18,6 +18,7 @@ def add_atencion(data, user):
     serializer = PayloadSerializer(data=data)
     if serializer.is_valid():
         valid_data = serializer.validated_data
+        paciente = valid_data["paciente"]
         svd = valid_data['signos_vitales']
         preinforme_data = valid_data['preinforme']
         cronologia_data = valid_data['cronologia']
@@ -25,12 +26,20 @@ def add_atencion(data, user):
         despacho_data = valid_data['despacho']
         despacho = get_object_or_404(Despacho, id=despacho_data['despacho_id'])
         ambulancia = get_object_or_404(Ambulancia, id=despacho_data['ambulancia_id'])
+        #se obtiene paciente para editar datos en caso de que vengan
+        temp = Paciente.objects.only("fecha_nacimiento","telefono","condicion_paciente").get(rut=paciente["rut"])
+
         if despacho.estado not in (Despacho.ASIGNADO, Despacho.EMERGENCIA):
             raise exceptions.ConflictException(detail="El despacho no está en un estado válido para registrar una atención")
         if Atencion.objects.filter(despacho=despacho).exists():
             raise exceptions.ConflictException(detail="Esta atencion ya fue despachada")
         try:
             with transaction.atomic():
+                temp.fecha_nacimiento = paciente["fecha_nacimiento"]
+                temp.condicion_paciente = paciente["condicion_paciente"]
+                temp.telefono = paciente["telefono"]
+                temp.save(update_fields=["fecha_nacimiento", "condicion_paciente", "telefono"])
+
                 atencion = Atencion.objects.create(
                     ambulancia=ambulancia, despacho=despacho,
                     hora_salida=despacho_data['hora_salida'],
