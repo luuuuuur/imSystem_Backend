@@ -70,7 +70,8 @@ from ims_backend.toolbox.Personal_package.set_device_token import set_device
 # Usar en vistas donde solo personal de control debe operar (como por ejemplo asignar trabajores, despachos etc)
 from ims_backend.auth_package.permissions import (ControlProfileOnly,
                                                   NurseProfileOnly, MedicProfileOnly, MFAVerified, DriverProfileOnly,
-                                                  MFAAndAnyProfile, MFAAndClinicalProfile, MFAAndMedicalStaff)
+                                                  MFAAndAnyProfile, MFAAndClinicalProfile, MFAAndMedicalStaff,
+                                                  MFAAndFieldStaff)
 
 # =============================================================================
 # UTILIDADES
@@ -727,3 +728,14 @@ class VerificarDocumentoAPI(APIView):
 
         result["valido"] = hash_ok and sig_s3_ok
         return Response(result, status=status.HTTP_200_OK)
+
+
+class SenalAPI(APIView):
+    http_method_names = ['post']
+    permission_classes = [MFAAndFieldStaff]
+
+    def post(self, request):
+        from ims_backend.toolbox.Senales_package.signal_handler import handle_signal
+        tipo = request.query_params.get('type')
+        handle_signal(tipo, request.data, request.user)
+        return Response({}, status=status.HTTP_200_OK)

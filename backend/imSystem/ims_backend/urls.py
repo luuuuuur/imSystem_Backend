@@ -39,7 +39,8 @@ urlpatterns = [
     path("api/inv/move/", MoveInsumoAPI.as_view(), name="MoveInsumoAPI"),
     path("api/inv/update/", UpdateStockAPI.as_view(), name="UpdateStockAPI"),
     path("api/fhir/", FHIR.as_view(), name="FHIR"),
-    path("api/documentos/verificar/", VerificarDocumentoAPI.as_view(), name="VerificarDocumento")
+    path("api/documentos/verificar/", VerificarDocumentoAPI.as_view(), name="VerificarDocumento"),
+    path("api/senales/", SenalAPI.as_view(), name="SenalAPI"),
 ]
 #ADD VIEWSET TO URLPATTERNS
 urlpatterns += router.urls

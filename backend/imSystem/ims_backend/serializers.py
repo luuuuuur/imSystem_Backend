@@ -241,3 +241,9 @@ class CambiarEstadoAmbulancia(serializers.Serializer):
 class VerificarDocumentoSerializer(serializers.Serializer):
     hash  = serializers.CharField(max_length=64)
     firma = serializers.CharField(required=False)
+
+class SenalOtroSerializer(serializers.Serializer):
+    mensaje = serializers.CharField(max_length=500)
+
+class SenalPatenteSerializer(serializers.Serializer):
+    patente = serializers.CharField(max_length=10)

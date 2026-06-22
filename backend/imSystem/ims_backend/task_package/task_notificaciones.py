@@ -5,6 +5,13 @@ from ims_backend.aws_package.secrets_manager import Secrets_API
 import firebase_admin
 from ims_backend.models import DeviceToken, Despacho, Atencion, Ambulancia
 
+
+class Senal:
+    OTRO         = 'senal_otro'
+    AMBULANCIA   = 'senal_ambulancia'
+    OCUPADA      = 'senal_ocupada'
+    OUTOFSERVICE = 'senal_outofservice'
+
 logger = logging.getLogger(__name__)
 
 _firebase_app = None
@@ -71,6 +78,27 @@ def _enviar_estado_ambulancia(patente, estado, id):
     token = _tokens_por_rol('control')
     logger.info(f'[FCM] Estado ambulancia: Se cambió el estado de la ambulancia con patente {patente}, tokens={len(token)}')
     _send(token=token, _title="Cambio de estado de ambulancia", _body=f"La ambulancia con patente {patente} ha actualizado su estado a '{estado}'. Acción registrada por el usuario con ID {id}.")
+
+def _enviar_senal_otro(mensaje, usuario_id):
+    token = _tokens_por_rol('control')
+    logger.info(f'[FCM] senal_otro: usuario_id={usuario_id}, tokens={len(token)}')
+    _send(token=token, _title="Otro...", _body=mensaje)
+
+def _enviar_senal_ambulancia_preparacion(patente, usuario_id):
+    token = _tokens_por_rol('control')
+    logger.info(f'[FCM] senal_ambulancia: patente={patente}, usuario_id={usuario_id}, tokens={len(token)}')
+    _send(token=token, _title="Ambulancia en preparación", _body=f"La ambulancia {patente} ha sido reportada. Se ha marcado como 'En preparación'. Acción registrada por el usuario con ID {usuario_id}.")
+
+def _enviar_senal_ambulancia_ocupada(patente, usuario_id):
+    token = _tokens_por_rol('control')
+    logger.info(f'[FCM] senal_ocupada: patente={patente}, usuario_id={usuario_id}, tokens={len(token)}')
+    _send(token=token, _title="Ambulancia ocupada", _body=f"La ambulancia {patente} ha reportado estar ocupada y su estado ha sido actualizado. Acción registrada por el usuario con ID {usuario_id}.")
+
+def _enviar_senal_outofservice(patente, usuario_id):
+    token = _tokens_por_rol('control')
+    logger.info(f'[FCM] senal_outofservice: patente={patente}, usuario_id={usuario_id}, tokens={len(token)}')
+    _send(token=token, _title="Falla mecánica - Ambulancia fuera de servicio", _body=f"La ambulancia {patente} ha reportado una falla mecánica y se ha marcado como 'Fuera de servicio'. Acción registrada por el usuario con ID {usuario_id}.")
+
 @shared_task(bind=True, max_retries=5, default_retry_delay=60)
 def notificacion(self, type, **kwargs):
     try:
@@ -96,7 +124,15 @@ def notificacion(self, type, **kwargs):
             case Ambulancia.MANTENCION:
                 _enviar_estado_ambulancia(kwargs["patente"], kwargs["estado"], kwargs["id"])
             case Ambulancia.NO_SERVICE:
-                _enviar_estado_ambulancia(kwargs["patente"], kwargs["estado"], kwargs["id"])    
+                _enviar_estado_ambulancia(kwargs["patente"], kwargs["estado"], kwargs["id"])
+            case Senal.OTRO:
+                _enviar_senal_otro(kwargs["mensaje"], kwargs["usuario_id"])
+            case Senal.AMBULANCIA:
+                _enviar_senal_ambulancia_preparacion(kwargs["patente"], kwargs["usuario_id"])
+            case Senal.OCUPADA:
+                _enviar_senal_ambulancia_ocupada(kwargs["patente"], kwargs["usuario_id"])
+            case Senal.OUTOFSERVICE:
+                _enviar_senal_outofservice(kwargs["patente"], kwargs["usuario_id"])
             case _:
                 logger.warning(f'[FCM] Tipo de notificacion no reconocido: {type}')
                 return

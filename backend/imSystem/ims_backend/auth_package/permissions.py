@@ -56,3 +56,4 @@ def roles_required(*roles: str) -> type[BasePermission]:
 MFAAndAnyProfile     = roles_required('control', 'driver', 'nurse', 'medic')
 MFAAndClinicalProfile = roles_required('control', 'nurse', 'medic')
 MFAAndMedicalStaff   = roles_required('nurse', 'medic')
+MFAAndFieldStaff     = roles_required('driver', 'nurse', 'medic')

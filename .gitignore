@@ -9,6 +9,11 @@ backend/imSystem/backend_config/__pycache__
 backend/imSystem/__pycache__/
 backend/imSystem/ims_backend/test.py
 *.csv
+*.pem
+*.ppk
+*.ssh
+*.pub
+*.txt
 #STATICFILES
 backend/imSystem/staticfiles/
 #KEYS
