@@ -41,7 +41,8 @@ def all_despachos(query_params=None):
                     'asignado_por_id': despacho.asignado_por_id,
                     'paciente':{
                         'nombre_completo': despacho.paciente.nombre_completo,
-                        'rut':despacho.paciente.rut
+                        'rut':despacho.paciente.rut,
+                        'fecha_nacimiento':despacho.paciente.fecha_nacimiento if despacho.paciente.fecha_nacimiento else None
                     } if despacho.paciente else None,
                     'personal': personal
                 }
