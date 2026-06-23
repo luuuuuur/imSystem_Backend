@@ -44,6 +44,7 @@ def solicitud_usuario(user):
                     'direccionDestino': d.direccion_destino,
                     'descripcionLlamado': d.descripcion_llamado,
                     'fechaLlamado': d.fecha_llamado,
+                    'fechaProgramada': d.fecha_programada,
                     'paciente':{
                         'nombre_completo':d.paciente.nombre_completo,
                         'rut':d.paciente.rut,
