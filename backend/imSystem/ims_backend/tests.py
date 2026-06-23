@@ -21,6 +21,7 @@ ESTADOS_URL       = f"{BASE_URL}/ambulancias/estados/"
 VERIFICAR_URL     = f"{BASE_URL}/documentos/verificar/"
 SENALES_URL       = f"{BASE_URL}/senales/"
 CANCELAR_URL      = f"{BASE_URL}/despachos/cancelar/"
+MIS_DESPACHOS_URL = f"{BASE_URL}/despachos/get/"
 
 resultados_lock = threading.Lock()
 
@@ -1220,6 +1221,97 @@ def modo_cancelar_despacho(s: requests.Session):
             print("  Despacho cancelado. Si tenía grupo asignado, la notificación FCM fue encolada en Celery.")
 
 
+# ── Mis despachos ────────────────────────────────────────────────────────────
+
+_ESTADO_LABEL = {
+    "recibido":   "RECIBIDO",
+    "asignado":   "ASIGNADO",
+    "programado": "PROGRAMADO",
+    "emergencia": "EMERGENCIA",
+    "finalizado": "FINALIZADO",
+    "cancelado":  "CANCELADO",
+}
+
+_ESTADO_COLOR = {
+    "recibido":   "[ ]",
+    "asignado":   "[A]",
+    "programado": "[P]",
+    "emergencia": "[!]",
+    "finalizado": "[F]",
+    "cancelado":  "[X]",
+}
+
+
+def modo_mis_despachos(s: requests.Session):
+    while True:
+        print(f"\n{'=' * 60}")
+        print("  MIS DESPACHOS  (grupo al que perteneces)")
+        print("=" * 60)
+
+        r = s.get(MIS_DESPACHOS_URL, headers=_csrf_headers(s))
+
+        if r.status_code == 404:
+            print("  No estás inscrito en ningún grupo activo.")
+            input("\n  [Enter] volver al menú: ")
+            break
+
+        if r.status_code != 200:
+            print(f"  [ERR] HTTP {r.status_code}: {r.text[:300]}")
+            input("\n  [Enter] volver al menú: ")
+            break
+
+        despachos = r.json()
+
+        if not despachos:
+            print("  Tu grupo no tiene despachos activos.")
+            input("\n  [Enter] volver al menú: ")
+            break
+
+        print(f"  {len(despachos)} despacho(s) encontrado(s)\n")
+
+        for i, d in enumerate(despachos, start=1):
+            estado     = d.get("estado", "")
+            icono      = _ESTADO_COLOR.get(estado, "[?]")
+            tipo       = _ESTADO_LABEL.get(estado, estado.upper())
+            paciente   = d.get("paciente") or {}
+            ambulancia = d.get("ambulancia") or {}
+            personal   = d.get("personal", [])
+
+            print(f"  {'─' * 56}")
+            print(f"  #{i}  ID:{d.get('id')}  {icono} {tipo}")
+            print(f"  {'─' * 56}")
+            print(f"  Origen     : {d.get('direccionOrigen', 'N/A')}")
+            print(f"  Destino    : {d.get('direccionDestino') or '—'}")
+            if d.get("descripcionLlamado"):
+                print(f"  Descripcion: {d['descripcionLlamado']}")
+            print(f"  Llamado    : {d.get('fechaLlamado', 'N/A')}")
+            if d.get("fechaProgramada"):
+                print(f"  Programado : {d['fechaProgramada']}")
+
+            if paciente:
+                print(f"  Paciente   : {paciente.get('nombre_completo', 'N/A')} "
+                      f"— RUT {paciente.get('rut', 'N/A')}"
+                      f"  (nac. {paciente.get('fecha_nacimiento', 'N/A')})")
+
+            if ambulancia:
+                print(f"  Ambulancia : {ambulancia.get('modelo', 'N/A')} "
+                      f"[{ambulancia.get('patente', 'N/A')}] "
+                      f"— {ambulancia.get('estado', 'N/A')}")
+
+            if personal:
+                nombres = ", ".join(
+                    f"{p.get('personal__first_name','')} {p.get('personal__last_name','')} "
+                    f"({p.get('personal__rol__nombre_rol', '?')})"
+                    for p in personal
+                )
+                print(f"  Equipo     : {nombres}")
+
+        print(f"\n  {'─' * 56}")
+        accion = input("\n  [r] refrescar  |  [q] volver al menú: ").strip().lower()
+        if accion != "r":
+            break
+
+
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 def main():
@@ -1241,6 +1333,7 @@ def main():
         print("  [9] Atención con datos de paciente (fecha_nacimiento / telefono / condicion)")
         print("  [10] Señales (otro / ambulancia / ocupada / fuera de servicio)")
         print("  [11] Cancelar despacho")
+        print("  [12] Mis despachos (despachos de tu grupo)")
         print("  [q] Salir")
         opcion = input("\nOpción: ").strip().lower()
 
@@ -1266,6 +1359,8 @@ def main():
             modo_senales(s)
         elif opcion == "11":
             modo_cancelar_despacho(s)
+        elif opcion == "12":
+            modo_mis_despachos(s)
         elif opcion == "q":
             break
         else:

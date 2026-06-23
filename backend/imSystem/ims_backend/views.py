@@ -601,7 +601,9 @@ class ProgramarDespacho(APIView):
             try:
                 with transaction.atomic():
                     _despacho = get_object_or_404(Despacho, id=_valid_data["despacho_id"])
+                    _grupo    = get_object_or_404(GrupoPersonal, id=_valid_data["grupo_id"])
                     change_despacho_status(type=Despacho.PROGRAMADO, despacho=_despacho,fecha_prog=_valid_data["fecha_programada"])
+                    DespachoPersonal.objects.get_or_create(despacho=_despacho, grupo=_grupo)
                     log_data["despacho_id"] = _valid_data["despacho_id"]
                     log_data["estado"] = Despacho.PROGRAMADO
                     transaction.on_commit(lambda: cambiar_estado_log.delay(data=log_data))
