@@ -52,10 +52,10 @@ UCUM_MAP = {
 # Fix #4: hgt → laboratory; gcs/eva → survey (not vital-signs)
 # Fix #5: /min is ambiguous — use canonical 1/min as code; beats/min as display for HR
 VITAL_LOINC = {
-    "frecuencia_cardiaca": ("8867-4",  "Heart rate",                                                    "beats/min", "1/min",   "vital-signs"),
+    "frecuencia_cardiaca": ("8867-4",  "Heart rate",                                                    "beats/min", "/min",    "vital-signs"),
     "saturacion_oxigeno":  ("2708-6",  "Oxygen saturation in Arterial blood",                           "%",         "%",       "vital-signs"),
     "temperatura":         ("8310-5",  "Body temperature",                                              "Cel",       "Cel",     "vital-signs"),
-    "fr":                  ("9279-1",  "Respiratory rate",                                              "/min",      "1/min",   "vital-signs"),
+    "fr":                  ("9279-1",  "Respiratory rate",                                              "/min",      "/min",    "vital-signs"),
     "fio2":                ("3150-0",  "Inhaled oxygen concentration",                                  "%",         "%",       "vital-signs"),
     "hgt":                 ("2339-0",  "Glucose [Mass/volume] in Blood",                                "mg/dL",     "mg/dL",   "laboratory"),
     "gcs":                 ("9269-2",  "Glasgow coma score total",                                      "{score}",   "{score}", "survey"),
@@ -160,10 +160,11 @@ def export_hl7(atencion_id) -> dict:
 
     address_list = []
     if paciente.direccion or paciente.comuna:
-        address_list.append(Address(
-            text=paciente.direccion.strip() if paciente.direccion else None,
-            city=paciente.comuna.strip() if paciente.comuna else None,
-        ))
+        # CL Core cl-address requires Address.city to carry a coded ComunasCl extension
+        # (CODEMA code). We only have plain text, so we omit city and put everything in
+        # text to avoid the mandatory-extension validation error.
+        addr_parts = [p.strip() for p in [paciente.direccion, paciente.comuna] if p and p.strip()]
+        address_list.append(Address(text=", ".join(addr_parts) if addr_parts else None))
 
     patient_id = _rut_identifier(paciente.rut)
     patient = Patient(
