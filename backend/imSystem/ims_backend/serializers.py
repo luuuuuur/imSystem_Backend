@@ -42,6 +42,7 @@ class DespachoListSerializer(serializers.ModelSerializer):
         return {
             "nombre_completo": obj.paciente.nombre_completo,
             "rut": obj.paciente.rut,
+            "fecha_nacimiento": obj.paciente.fecha_nacimiento
         }
 
     def get_personal(self, obj):
