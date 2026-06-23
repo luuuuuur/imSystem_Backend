@@ -46,7 +46,8 @@ def solicitud_usuario(user):
                     'fechaLlamado': d.fecha_llamado,
                     'paciente':{
                         'nombre_completo':d.paciente.nombre_completo,
-                        'rut':d.paciente.rut
+                        'rut':d.paciente.rut,
+                        'fecha_nacimiento':d.paciente.fecha_nacimiento
                     } if d.paciente else None,
                     'ambulancia': {
                         'id': str(d.ambulancia.id),
