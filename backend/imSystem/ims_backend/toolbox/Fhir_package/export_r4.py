@@ -36,9 +36,6 @@ PROFILE_PRACTITIONER = f"{CL}/CorePrestadorCl"
 PROFILE_ENCOUNTER    = f"{CL}/EncounterCL"
 PROFILE_OBSERVATION  = f"{CL}/CoreObservacionCL"
 
-# ── Private / local code systems ──────────────────────────────────────────────
-SYSTEM_CATEGORIA = "https://956.duckdns.org/fhir/CodeSystem/CategoriaAtencion"
-SYSTEM_CRONOEV   = "https://956.duckdns.org/fhir/CodeSystem/EventoCronologia"
 
 # ── Value mappings ────────────────────────────────────────────────────────────
 STATUS_MAP = {
@@ -51,15 +48,23 @@ UCUM_MAP = {
     "UNIDAD":     "{unidad}",
     "comprimido": "{comprimido}",
 }
+# Each entry: (loinc_code, display, unit_display, ucum_code, obs_category)
+# Fix #4: hgt → laboratory; gcs/eva → survey (not vital-signs)
+# Fix #5: /min is ambiguous — use canonical 1/min as code; beats/min as display for HR
 VITAL_LOINC = {
-    "frecuencia_cardiaca": ("8867-4",  "Heart rate",                                                    "/min"),
-    "saturacion_oxigeno":  ("2708-6",  "Oxygen saturation in Arterial blood",                           "%"),
-    "temperatura":         ("8310-5",  "Body temperature",                                              "Cel"),
-    "fr":                  ("9279-1",  "Respiratory rate",                                              "/min"),
-    "fio2":                ("3150-0",  "Inhaled oxygen concentration",                                  "%"),
-    "hgt":                 ("2339-0",  "Glucose [Mass/volume] in Blood",                                "mg/dL"),
-    "gcs":                 ("9269-2",  "Glasgow coma score total",                                      "{score}"),
-    "eva":                 ("72514-3", "Pain severity - 0-10 verbal numeric rating [Score] - Reported", "{score}"),
+    "frecuencia_cardiaca": ("8867-4",  "Heart rate",                                                    "beats/min", "1/min",   "vital-signs"),
+    "saturacion_oxigeno":  ("2708-6",  "Oxygen saturation in Arterial blood",                           "%",         "%",       "vital-signs"),
+    "temperatura":         ("8310-5",  "Body temperature",                                              "Cel",       "Cel",     "vital-signs"),
+    "fr":                  ("9279-1",  "Respiratory rate",                                              "/min",      "1/min",   "vital-signs"),
+    "fio2":                ("3150-0",  "Inhaled oxygen concentration",                                  "%",         "%",       "vital-signs"),
+    "hgt":                 ("2339-0",  "Glucose [Mass/volume] in Blood",                                "mg/dL",     "mg/dL",   "laboratory"),
+    "gcs":                 ("9269-2",  "Glasgow coma score total",                                      "{score}",   "{score}", "survey"),
+    "eva":                 ("72514-3", "Pain severity - 0-10 verbal numeric rating [Score] - Reported", "{score}",   "{score}", "survey"),
+}
+CAT_DISPLAY = {
+    "vital-signs": "Vital Signs",
+    "laboratory":  "Laboratory",
+    "survey":      "Survey",
 }
 CRONO_EVENTS = {
     "hora_llamada":   ("hora-llamada",   "Hora de la llamada al servicio"),
@@ -85,18 +90,20 @@ def _to_iso(val) -> str | None:
 def _narrative(text: str) -> dict:
     return {"status": "generated", "div": f'<div xmlns="http://www.w3.org/1999/xhtml">{text}</div>'}
 
-def _rut_identifier(rut: str) -> Identifier:
+_INVALID_RUTS = {"0-0", "0", "0-K", ""}
+
+def _is_valid_rut(rut: str) -> bool:
+    return bool(rut) and rut.strip() not in _INVALID_RUTS
+
+def _rut_identifier(rut: str) -> Identifier | None:
     """
-    Builds a Chilean RUN identifier conformant with CorePacienteCl / CorePrestadorCl.
-    type is intentionally omitted: CSIdentificadores is not resolvable by the validator
-    at runtime, so adding type.coding causes a required-binding error on CorePrestadorCl
-    (VSTipoIdentificador) that cascades into every cross-reference check in the bundle.
+    Returns a Chilean RUN identifier conformant with CorePacienteCl / CorePrestadorCl,
+    or None when the RUT is invalid/unknown. Callers must filter out None before building
+    the identifier list. type is intentionally omitted — see original comment above.
     """
-    return Identifier(
-        use="official",
-        system=SYSTEM_RUT,
-        value=rut,
-    )
+    if _is_valid_rut(rut):
+        return Identifier(use="official", system=SYSTEM_RUT, value=rut)
+    return None
 
 def _split_nombre(nombre_completo: str) -> tuple[list[str], str]:
     """Best-effort split of a full-name string into (given_names, family)."""
@@ -158,10 +165,11 @@ def export_hl7(atencion_id) -> dict:
             city=paciente.comuna.strip() if paciente.comuna else None,
         ))
 
+    patient_id = _rut_identifier(paciente.rut)
     patient = Patient(
         meta={"profile": [PROFILE_PATIENT]},
         text=_narrative(f"Paciente: {paciente.nombre_completo} — RUT {paciente.rut}"),
-        identifier=[_rut_identifier(paciente.rut)],
+        identifier=[patient_id] if patient_id else None,
         name=[HumanName(
             use="official",
             text=paciente.nombre_completo,
@@ -184,10 +192,11 @@ def export_hl7(atencion_id) -> dict:
             code=CodeableConcept(text=practicante.rol.nombre_rol)
         ))
 
+    prac_id = _rut_identifier(practicante.rut)
     practitioner = Practitioner(
         meta={"profile": [PROFILE_PRACTITIONER]},
         text=_narrative(f"Prestador: {practicante.full_name} — RUT {practicante.rut}"),
-        identifier=[_rut_identifier(practicante.rut)],
+        identifier=[prac_id] if prac_id else None,
         name=[HumanName(
             use="official",
             text=practicante.full_name,
@@ -199,10 +208,13 @@ def export_hl7(atencion_id) -> dict:
     entries.append(_entry(practitioner_uuid, practitioner, "Practitioner"))
 
     # ── Receiver / receptor (optional) ────────────────────────────────────────
+    # Fix #1: Practitioner requires name per CL Core CorePrestadorCl profile
     if receiver_uuid:
+        recv_id = _rut_identifier(atencion.rut_receptor)
         receiver = Practitioner(
             text=_narrative(f"Receptor — RUT {atencion.rut_receptor}"),
-            identifier=[_rut_identifier(atencion.rut_receptor)],
+            identifier=[recv_id] if recv_id else None,
+            name=[HumanName(text="Receptor desconocido")],
         )
         entries.append(_entry(receiver_uuid, receiver, "Practitioner"))
 
@@ -225,23 +237,27 @@ def export_hl7(atencion_id) -> dict:
             individual={"reference": receiver_uuid, "display": "Receptor"},
         ))
 
+    # Fix #6: status "finished" requires period.end — fall back to now() if hora_llegada absent
+    encounter_status = STATUS_MAP.get(atencion.estado_sello, "unknown")
+    period_start = _to_iso(atencion.hora_salida)  if atencion.hora_salida  else None
+    period_end   = _to_iso(atencion.hora_llegada) if atencion.hora_llegada else None
+    if encounter_status == "finished" and not period_end:
+        period_end = _now_utc()
+    encounter_period = {"start": period_start, "end": period_end} if (period_start or period_end) else None
+
     encounter_kwargs = {
         "meta":       {"profile": [PROFILE_ENCOUNTER]},
         "text":       _narrative(f"Atención prehospitalaria de emergencia — {paciente.nombre_completo}"),
-        "status":     STATUS_MAP.get(atencion.estado_sello, "unknown"),
+        "status":     encounter_status,
         "class_fhir": {"system": ACT_CODE, "code": "EMER", "display": "emergency"},
         "subject":    {"reference": patient_uuid, "display": paciente.nombre_completo},
         "participant": participants,
-        "period": {
-            "start": _to_iso(atencion.hora_salida)  if atencion.hora_salida  else None,
-            "end":   _to_iso(atencion.hora_llegada) if atencion.hora_llegada else None,
-        },
         "reasonCode": [{"text": motivo_txt}],
     }
+    if encounter_period:
+        encounter_kwargs["period"] = encounter_period
     if crono and crono.categoria:
-        encounter_kwargs["priority"] = {
-            "coding": [{"system": SYSTEM_CATEGORIA, "code": crono.categoria, "display": f"Categoría {crono.categoria}"}]
-        }
+        encounter_kwargs["priority"] = {"text": f"Categoría {crono.categoria}"}
     entries.append(_entry(encounter_uuid, Encounter(**encounter_kwargs), "Encounter"))
 
     # ── Observations: signos vitales ──────────────────────────────────────────
@@ -283,22 +299,22 @@ def export_hl7(atencion_id) -> dict:
                 bp_kwargs["note"] = [{"text": sv.observaciones}]
             entries.append(_entry(bp_uuid, Observation(**bp_kwargs), "Observation"))
 
-        for field, (code, display, unit) in VITAL_LOINC.items():
+        for field, (code, display, unit_display, ucum_code, obs_category) in VITAL_LOINC.items():
             value = getattr(sv, field, None)
             if value is None:
                 continue
             obs_uuid = f"urn:uuid:{uuid.uuid4()}"
             obs_kwargs = dict(
                 meta={"profile": [PROFILE_OBSERVATION]},
-                text=_narrative(f"{display}: {value} {unit}"),
+                text=_narrative(f"{display}: {value} {unit_display}"),
                 status="final",
-                category=[CodeableConcept(coding=[Coding(system=OBS_CAT, code="vital-signs", display="Vital Signs")])],
+                category=[CodeableConcept(coding=[Coding(system=OBS_CAT, code=obs_category, display=CAT_DISPLAY.get(obs_category, obs_category))])],
                 code=CodeableConcept(coding=[Coding(system=LOINC, code=code, display=display)]),
                 subject=Reference(reference=patient_uuid),
                 encounter=Reference(reference=encounter_uuid),
                 effectiveDateTime=effective_iso,
                 performer=[Reference(reference=practitioner_uuid)],
-                valueQuantity=Quantity(value=float(value), unit=unit, system=UCUM, code=unit),
+                valueQuantity=Quantity(value=float(value), unit=unit_display, system=UCUM, code=ucum_code),
             )
             if sv.observaciones:
                 obs_kwargs["note"] = [{"text": sv.observaciones}]
@@ -326,11 +342,12 @@ def export_hl7(atencion_id) -> dict:
                 meta={"profile": [PROFILE_OBSERVATION]},
                 text=_narrative(f"Cronología — {display}"),
                 status="final",
-                category=[CodeableConcept(coding=[Coding(system=OBS_CAT, code="exam", display="Exam")])],
-                code=CodeableConcept(coding=[Coding(system=SYSTEM_CRONOEV, code=code, display=display)]),
+                category=[CodeableConcept(coding=[Coding(system=OBS_CAT, code="survey", display="Survey")])],
+                code=CodeableConcept(text=display),
                 subject=Reference(reference=patient_uuid),
                 encounter=Reference(reference=encounter_uuid),
                 effectiveDateTime=effective_iso,
+                valueDateTime=effective_iso,
                 performer=[Reference(reference=practitioner_uuid)],
             ), "Observation"))
 
