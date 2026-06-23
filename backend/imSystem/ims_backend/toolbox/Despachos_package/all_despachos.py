@@ -90,7 +90,8 @@ def all_despachos(query_params=None):
                     'ambulancia_id': d.ambulancia_id,
                     'paciente':{
                         'nombre_completo':d.paciente.nombre_completo,
-                        'rut':d.paciente.rut
+                        'rut':d.paciente.rut,
+                        'fecha_nacimiento': d.paciente.fecha_nacimiento
                     } if d.paciente else None,
                     'personal': personal
                 })
