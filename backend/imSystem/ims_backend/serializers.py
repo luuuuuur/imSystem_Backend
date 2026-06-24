@@ -14,8 +14,8 @@ class PersonalSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Personal
-        fields = ['id', 'username', 'first_name', 'last_name', 'rut', 'is_active', 'rol_nombre']
-        read_only_fields = ['username', 'rol_nombre']
+        fields = ['id', 'username', 'first_name', 'last_name', 'rut', 'is_active', 'rol_nombre', 'last_login']
+        read_only_fields = ['username', 'rol_nombre', 'last_login']
 
 class LogAuditoriaSerializer(serializers.ModelSerializer):
     class Meta:
