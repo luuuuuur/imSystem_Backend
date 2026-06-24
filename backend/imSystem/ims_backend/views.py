@@ -699,7 +699,7 @@ class CambiarEstadoAmbulancia(APIView):
 class VerificarDocumentoAPI(APIView):
     from ims_backend.serializers import VerificarDocumentoSerializer
     http_method_names = ['get']
-    permission_classes = [MFAVerified]
+    permission_classes = [AllowAny]
 
     def get(self, request):
         from ims_backend.models import Documento
