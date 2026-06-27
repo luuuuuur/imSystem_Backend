@@ -153,10 +153,10 @@ SESSION_COOKIE_HTTPONLY =True
 CSRF_COOKIE_SECURE=True
 
 # Broker URL
-CELERY_BROKER_URL = 'redis://172.31.40.157:4444/0'
+CELERY_BROKER_URL = 'redis://172.31.22.194:4444/0'
 
 # URL para guardar el resultado de las tareas
-CELERY_RESULT_BACKEND = 'redis://172.31.40.157:4444/0'
+CELERY_RESULT_BACKEND = 'redis://172.31.22.194:4444/0'
 
 # Formato de datos aceptable
 CELERY_ACCEPT_CONTENT = ['json']
