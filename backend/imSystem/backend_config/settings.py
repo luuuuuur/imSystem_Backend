@@ -16,7 +16,7 @@ AWS_BUCKET_NAME=secrets_aws["AWS_BUCKET_NAME"]
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ["api.imsambulancias.cl", "app.imsambulancias.cl", "13.216.65.240"]
+ALLOWED_HOSTS = ["api.imsambulancias.cl", "app.imsambulancias.cl", "13.216.65.240", "ec2-13-216-65-240.compute-1.amazonaws.com"]
 
 
 # Application definition
