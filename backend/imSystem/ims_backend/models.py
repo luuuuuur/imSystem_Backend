@@ -260,6 +260,69 @@ class Documento(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return f"Documento {self.id} - {self.archivo_hash[:16]}..."
+
+
+class Notificacion(models.Model):
+    TIPOS = [
+        ('despacho', 'Nuevo despacho'),
+        ('reasignacion', 'Reasignación'),
+        ('alerta_stock', 'Stock bajo mínimo'),
+        ('sistema', 'Sistema'),
+    ]
+
+    destinatario = models.ForeignKey(GrupoPersonal, on_delete=models.CASCADE, related_name='notificaciones')
+    tipo = models.CharField(max_length=30, choices=TIPOS)
+    titulo = models.CharField(max_length=255)
+    mensaje = models.TextField()
+    url_embebida = models.CharField(max_length=500, blank=True, help_text="Link a Google Maps u otro")
+
+    despacho = models.ForeignKey(Despacho, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['destinatario']),
+        ]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Notif {self.tipo} para {self.destinatario}"
+
+#UNUSED
+class TicketCredencial(models.Model):
+    ESTADOS = [
+        ('pendiente', 'Pendiente'),
+        ('en_revision', 'En revisión'),
+        ('resuelto', 'Resuelto'),
+        ('rechazado', 'Rechazado'),
+    ]
+
+    solicitante = models.ForeignKey(Personal, on_delete=models.CASCADE, related_name='tickets_credencial')
+    motivo = models.TextField()
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='pendiente')
+
+    resuelto_por = models.ForeignKey(
+        Personal,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='tickets_resueltos',
+        help_text="Usuario control que resolvió el ticket"
+    )
+    observaciones_resolucion = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['estado', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"Ticket #{self.id} - {self.solicitante} - {self.estado}"
+
+
 class LogAuditoria(models.Model):
     TIPOS = [
         ('atencion', 'Atención'),
