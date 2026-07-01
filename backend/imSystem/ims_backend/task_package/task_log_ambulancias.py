@@ -8,8 +8,7 @@ def mover_elemento_log(self,data):
     logger.error(f"[AMB]DATA RECIBIDA: {data}")
     try:
         user = Personal.objects.get(rut=data["rut"])
-        log = f"El usuario con RUT {user.rut} trasladó {data['cantidad']} unidades del insumo con ID {data['presentacion_id']} desde {data['update_from']} hacia {data['update_to']}."
-        LogAuditoria.objects.create(tipo="ambulancia",usuario_id=user.id, rut_usuario=user.rut,
+        log = f"El usuario con RUT {user.rut} trasladó {data['cantidad']} unidades del insumo con ID {data['presentacion_id']} desde {data['update_from']} hacia {data['update_to']}."        LogAuditoria.objects.create(tipo="ambulancia",usuario_id=user.id, rut_usuario=user.rut,
                                             descripcion=log)
     except Exception as exc:
         raise self.retry(exc=exc)
