@@ -41,7 +41,7 @@ def _obtener_grupo_desde_usuario(usuario):
     try:
         suscripcion = SuscritosAGrupo.objects.select_related('grupo').filter(
             personal=usuario, fecha_salida=None
-        ).first()
+        ).all()
         if suscripcion is not None:
             return suscripcion.grupo.nombre_grupo
     except Exception:
@@ -67,7 +67,7 @@ def handle_signal(tipo, payload, usuario, despacho_id=None):
             mensaje = serializer.validated_data["mensaje"]
             transaction.on_commit(lambda: notificacion.delay(type=Senal.OTRO, mensaje=mensaje, usuario_id=uid))
             transaction.on_commit(lambda: log_senal_otro.delay(usuario_id=uid, mensaje=mensaje))
-
+        #Operatividad no cambia estado
         case Senal.AMBULANCIA | Senal.OCUPADA | Senal.OUTOFSERVICE:
             serializer = SenalPatenteSerializer(data=payload)
             if not serializer.is_valid():
@@ -77,7 +77,7 @@ def handle_signal(tipo, payload, usuario, despacho_id=None):
             _log_task = _SENALES_AMBULANCIA[tipo]
             transaction.on_commit(lambda: notificacion.delay(type=tipo, patente=patente, usuario_id=uid))
             transaction.on_commit(lambda: _log_task.delay(usuario_id=uid, patente=patente))
-
+        #Despacho no cambia estado
         case Senal.EN_CAMINO | Senal.EN_DESTINO | Senal.OPERANDO:
             if not despacho_id:
                 raise BadRequestException(detail="Se requiere el parámetro 'despacho_id' para esta señal.")
@@ -87,7 +87,7 @@ def handle_signal(tipo, payload, usuario, despacho_id=None):
             _gn  = grupo_nombre
             transaction.on_commit(lambda: notificacion.delay(type=tipo, grupo_nombre=_gn, despacho_id=_did))
             transaction.on_commit(lambda: _log_task.delay(usuario_id=uid, grupo_nombre=_gn, despacho_id=_did))
-
+        #Nivel equipo
         case Senal.DISPONIBLE | Senal.REGRESANDO:
             grupo_nombre = _obtener_grupo_desde_usuario(usuario)
             _log_task = _SENALES_GLOBAL[tipo]
