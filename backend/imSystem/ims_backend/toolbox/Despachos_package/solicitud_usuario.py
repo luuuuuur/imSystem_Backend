@@ -53,6 +53,7 @@ def solicitud_usuario(user):
             'descripcionLlamado': d.descripcion_llamado,
             'fechaLlamado': d.fecha_llamado,
             'fechaProgramada': d.fecha_programada,
+            'grupoNombre': dp.grupo.nombre_grupo,
             'paciente': {
                 'nombre_completo': d.paciente.nombre_completo,
                 'rut': d.paciente.rut,
