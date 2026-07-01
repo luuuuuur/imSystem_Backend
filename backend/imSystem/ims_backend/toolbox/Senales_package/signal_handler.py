@@ -36,19 +36,6 @@ def _obtener_grupo_desde_despacho(despacho_id):
         pass
     return f"Despacho {despacho_id}"
 
-
-def _obtener_grupo_desde_usuario(usuario):
-    try:
-        suscripcion = SuscritosAGrupo.objects.select_related('grupo').filter(
-            personal=usuario, fecha_salida=None
-        ).all()
-        if suscripcion is not None:
-            return suscripcion.grupo.nombre_grupo
-    except Exception:
-        pass
-    return f"Usuario {usuario.id}"
-
-
 def _verificar_ambulancia(patente):
     try:
         Ambulancia.objects.get(patente=patente)
@@ -56,7 +43,7 @@ def _verificar_ambulancia(patente):
         raise NotFoundException(detail=f"No existe ambulancia con patente '{patente}'.")
 
 
-def handle_signal(tipo, payload, usuario, despacho_id=None):
+def handle_signal(tipo, payload,grupo_n ,usuario, despacho_id=None):
     uid = usuario.id
 
     match tipo:
@@ -89,7 +76,7 @@ def handle_signal(tipo, payload, usuario, despacho_id=None):
             transaction.on_commit(lambda: _log_task.delay(usuario_id=uid, grupo_nombre=_gn, despacho_id=_did))
         #Nivel equipo
         case Senal.DISPONIBLE | Senal.REGRESANDO:
-            grupo_nombre = _obtener_grupo_desde_usuario(usuario)
+            grupo_nombre = grupo_n
             _log_task = _SENALES_GLOBAL[tipo]
             _gn = grupo_nombre
             transaction.on_commit(lambda: notificacion.delay(type=tipo, grupo_nombre=_gn, despacho_id=None))
