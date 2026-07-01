@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.forms.models import model_to_dict
 from ims_backend.task_package.task_s3 import enviar_s3
 from ims_backend.task_package.task_log_atencion import agregar_log_atencion
+import logging
 import json
 import base64
 from ims_backend.toolbox.customencoder import CustomEncoder
@@ -194,12 +195,18 @@ def _ejecutar_transaccion(despacho, ambulancia, temp, paciente_data, despacho_da
     return hash_hex
 
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 def add_atencion(data, user):
+    logger.error(f"PAYLOAD RECIBIDO: {data}")
     contexto = _preparar_contexto(data)
     try:
         hash_hex = _ejecutar_transaccion(**contexto, user=user)
     except ValueError as ve:
         raise exceptions.BadRequestException(detail=str(ve))
     except Exception as e:
+        logger.error(f"ERROR EN ATENCION: {e}", exc_info=True)
         raise exceptions.InternalServerException(detail=str(e))
     return {"success": "Succeeded", "hash": hash_hex}
