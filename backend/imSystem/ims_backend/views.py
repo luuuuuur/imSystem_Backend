@@ -335,7 +335,7 @@ class RegistroAtencionAPI(APIView):
 
 class GruposObtener(APIView):
     http_method_names = ['get']
-    permission_classes = [ControlProfileOnly & MFAVerified]
+    permission_classes = [MFAAndAnyProfile]
     def get(self, request):
         if request.query_params:
             r = with_query(request.query_params)
