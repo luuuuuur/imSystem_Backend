@@ -6,9 +6,11 @@ logger = logging.getLogger(__name__)
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def mover_elemento_log(self,data):
     logger.error(f"[AMB]DATA RECIBIDA: {data}")
+    amb_from = Ambulancia.objects.get(id=data["ambulancia_from_id"])
+    amb_to = Ambulancia.objects.get(id=data["ambulancia_to_id"])
     try:
         user = Personal.objects.get(rut=data["rut"])
-        log = f"El usuario con RUT {user.rut} trasladó {data['cantidad']} unidades del insumo con ID {data['presentacion_id']} desde {data['ambulancia_from_id']} hacia {data['ambulancia_to_id']}."
+        log = f"El usuario con RUT {user.rut} trasladó {data['cantidad']} unidades del insumo con ID {data['presentacion_id']} desde {amb_from.patente} hacia {amb_to.patente}."
         LogAuditoria.objects.create(tipo="ambulancia", usuario_id=user.id, rut_usuario=user.rut, descripcion=log)
     except Exception as exc:
         raise self.retry(exc=exc)
