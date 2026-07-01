@@ -6,9 +6,15 @@ import csv
 import requests
 from datetime import datetime
 from statistics import mean, median
-
-sys.path.insert(0, '/home/miku/Documents/tests/javi')
-from funciones import BASE_URL, HEADERS_BASE, DESPACHO_URL, PAYLOAD_DESPACHO
+HEADERS_BASE = {"Referer": "https://api.imsambulancias.cl/"}
+BASE_URL = "https://api.imsambulancias.cl/ims/api"
+PAYLOAD_DESPACHO = {
+    "direccion_origen": "Av. Libertad 123",
+    "direccion_destino": "Hospital Regional",
+    "descripcion_llamado": "Prueba de carga, puede ser borrado, no asociado a atencion",
+    "paciente_rut": "20999999-9"
+}
+DESPACHO_URL = f"{BASE_URL}/despachos/add/"
 
 AUTH_URL          = f"{BASE_URL}/auth/"
 LOGIN_URL         = f"{BASE_URL}/login/"
@@ -1133,8 +1139,11 @@ def senal_outofservice(s: requests.Session):
 
 def _senal_equipo_global(s: requests.Session, tipo: str, label: str):
     print(f"\n-- Señal global: {label} --")
-    print("  El servidor resolverá el grupo del usuario autenticado automáticamente.")
-    r = s.post(SENALES_URL, params={"type": tipo}, headers=_csrf_headers(s))
+    grupo = input("  nombre_grupo: ").strip()
+    if not grupo:
+        print("  Grupo vacío, cancelando.")
+        return
+    r = s.post(SENALES_URL, params={"type": tipo, "grupo_n": grupo}, headers=_csrf_headers(s))
     _notif_result(r)
 
 
