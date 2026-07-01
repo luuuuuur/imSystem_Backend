@@ -56,7 +56,7 @@ echo "=== ACTUALIZANDO DEPENDENCIAS ==="
 "$PIP" install "${APP_DIR}"/wheels/rustjson-*.whl --force-reinstall
 echo "=== APLICANDO MIGRACIONES ==="
 "$PYTHON" "${DJANGO_APP}/manage.py" makemigrations --noinput
-"$PYTHON" "${DJANGO_APP}/manage.py" migrate --noinput
+"$PYTHON" "${DJANGO_APP}/manage.py" migrate --noinput --fake
 
 echo "=== REINICIANDO GUNICORN Y NGINX ==="
 sudo systemctl daemon-reload

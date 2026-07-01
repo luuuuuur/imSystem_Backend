@@ -1,9 +1,11 @@
 from celery import shared_task
 from ims_backend.models import LogAuditoria, Personal, Ambulancia
-
+import logging
+logger = logging.getLogger(__name__)
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def mover_elemento_log(self,data):
+    logger.error(f"[AMB]DATA RECIBIDA: {data}")
     try:
         user = Personal.objects.get(rut=data["rut"])
         log = f"El usuario con RUT {user.rut} trasladó {data['cantidad']} unidades del insumo con ID {data['presentacion_id']} desde {data['update_from']} hacia {data['update_to']}."
@@ -15,6 +17,7 @@ def mover_elemento_log(self,data):
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def agregar_elemento_log(self, data):
+    logger.error(f"[AMB]DATA RECIBIDA: {data}")
     try:
         ids = [str(p) for p in data["added"]]
         log = f"El usuario con RUT {data['rut']} (ID: {data['user']}) agregó los siguientes elementos con IDs: {', '.join(ids)}."
@@ -25,6 +28,7 @@ def agregar_elemento_log(self, data):
         raise self.retry(exc=exc)
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def agregar_ambulancia_log(self, data):
+    logger.error(f"[AMB]DATA RECIBIDA: {data}")
     try:
         user = Personal.objects.get(id=data["user_id"])
         log = f"El usuario con RUT {user.rut} registró la ambulancia con patente {data['patente']}, modelo {data['modelo']} e ID {data['ambulancia_id']}."
@@ -36,6 +40,7 @@ def agregar_ambulancia_log(self, data):
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def actualizar_estados(self, rut, ambid):
+    logger.error(f"[AMB]DATA RECIBIDA: {rut}, {ambid}")
     try:
         personal = Personal.objects.get(rut=rut)
         ambulancia = Ambulancia.objects.get(id=ambid)
@@ -48,6 +53,7 @@ def actualizar_estados(self, rut, ambid):
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def log_senal_otro(self, usuario_id, mensaje):
+    logger.error(f"[SIG]DATA RECIBIDA: {usuario_id}, {mensaje}")
     try:
         usuario = Personal.objects.get(id=usuario_id)
         log = f"El usuario con RUT {usuario.rut} (ID: {usuario.id}) envió una señal de tipo 'Otro' con el siguiente mensaje: \"{mensaje}\"."
@@ -59,6 +65,7 @@ def log_senal_otro(self, usuario_id, mensaje):
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def log_senal_ambulancia(self, usuario_id, patente):
+    logger.error(f"[SIG]DATA RECIBIDA: {usuario_id}, {patente}")
     try:
         usuario = Personal.objects.get(id=usuario_id)
         log = f"El usuario con RUT {usuario.rut} (ID: {usuario.id}) reportó la ambulancia con patente {patente} y la marcó como 'En preparación'."
@@ -70,6 +77,7 @@ def log_senal_ambulancia(self, usuario_id, patente):
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def log_senal_ocupada(self, usuario_id, patente):
+    logger.error(f"[SIG]DATA RECIBIDA: {usuario_id}, {patente}")
     try:
         usuario = Personal.objects.get(id=usuario_id)
         log = f"El usuario con RUT {usuario.rut} (ID: {usuario.id}) reportó la ambulancia con patente {patente} como 'Actualmente en despacho'."
@@ -81,6 +89,8 @@ def log_senal_ocupada(self, usuario_id, patente):
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def log_senal_outofservice(self, usuario_id, patente):
+    logger.error(f"[SIG]DATA RECIBIDA: {usuario_id}, {patente}")
+
     try:
         usuario = Personal.objects.get(id=usuario_id)
         log = f"El usuario con RUT {usuario.rut} (ID: {usuario.id}) reportó una falla mecánica en la ambulancia con patente {patente} y la marcó como 'Fuera de servicio'."
@@ -91,6 +101,7 @@ def log_senal_outofservice(self, usuario_id, patente):
         raise self.retry(exc=exc)
 
 def _log_senal_equipo(self, usuario_id, grupo_nombre, despacho_id, descripcion):
+    logger.error(f"[SIG]DATA RECIBIDA: {usuario_id}, {grupo_nombre}, {despacho_id}. {descripcion}")
     try:
         usuario = Personal.objects.get(id=usuario_id)
         LogAuditoria.objects.create(
