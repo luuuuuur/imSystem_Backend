@@ -49,7 +49,6 @@ REPO_DIR="${BASE_DIR}/imSystem_Backend"
 APP_DIR="${REPO_DIR}/backend"
 DJANGO_APP="${APP_DIR}/imSystem"
 INSTALL_FILE="${APP_DIR}/install.txt"
-MIKUFILE="${DJANGO_APP}/.mikufile"
 
 # ==VALIDACION DE DIRECTORIOS==
 if [ ! -d "$BASE_DIR" ]; then
@@ -72,11 +71,6 @@ if [ ! -f "$INSTALL_FILE" ]; then
     exit 1
 fi
 
-if [ ! -f "$MIKUFILE" ]; then
-    echo "ERROR: $MIKUFILE no existe. Crea el archivo de variables de entorno antes de correr este script."
-    exit 1
-fi
-
 # ==FUNCIONES POR FAMILIA==
 
 setup_debian() {
@@ -88,62 +82,68 @@ setup_debian() {
         sudo apt-get install -y nginx
         sudo tee /etc/nginx/sites-available/ims.conf > /dev/null <<NGINX
 # Rate limiting — definido fuera del bloque server
-limit_req_zone \$binary_remote_addr zone=login:10m rate=5r/m;
+limit_req_zone $binary_remote_addr zone=login:10m rate=5r/m;
 
 server {
-    server_name 956.duckdns.org;
+    server_name api.imsambulancias.cl;
 
     # Ocultar versión de Nginx
     server_tokens off;
 
-    # Headers de seguridad
-    add_header X-Frame-Options "DENY" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Referrer-Policy "same-origin" always;
+    # Headers de seguridad DJANGO YA AGREGA
+   # add_header X-Frame-Options "DENY" always;
+    #add_header X-Content-Type-Options "nosniff" always;
+    #add_header Referrer-Policy "same-origin" always;
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    
-    location /static/ {
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self';" always;
-        alias /home/ubuntu/product/imSystem_Backend/backend/imSystem/staticfiles/;
-
-    }
 # Rate limiting solo en login
 
     location /ims/api/login/ {
         limit_req zone=login burst=3 nodelay;
         proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header X-Forwarded-Proto $scheme;
 
     }
+    # Rate limiting auth
 
+    location /ims/api/auth/ {
+        limit_req zone=login burst=3 nodelay;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+    }
     location / {
 
         proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     listen 443 ssl;
     http2 on; # managed by Certbot
-    ssl_certificate /etc/letsencrypt/live/956.duckdns.org/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/956.duckdns.org/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/api.imsambulancias.cl/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/api.imsambulancias.cl/privkey.pem; # managed by Certbot
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
 }
 server {
-    if (\$host = 956.duckdns.org) {
-        return 301 https://\$host\$request_uri;
+    if ($host = api.imsambulancias.cl) {
+        return 301 https://$host$request_uri;
     } # managed by Certbot
 
 
     listen 80;
-    server_name 956.duckdns.org;
+    server_name api.imsambulancias.cl;
     return 404; # managed by Certbot
 
 
@@ -157,152 +157,43 @@ NGINX
 
     echo "=== [Debian/Ubuntu] Instalando dependencias Python ==="
     sudo apt-get install -y python3-pip python3-venv git
-    echo "=== INSTALANDO CELERY==="
-    sudo apt install redis -y
+    echo "=== INSTALANDO CELERY ==="
+    sudo apt install redis-server -y
     sudo tee /etc/systemd/system/celery.service > /dev/null <<EOF
 [Unit]
-Description=Celery Worker
-After=network.target redis.service
+Description=Celery Worker IMS
+After=network.target redis-server.target
 
 [Service]
+Type=simple
 User=${BASE_USER}
+Group=${BASE_USER}
 WorkingDirectory=${DJANGO_APP}
-ExecStart=${BASE_DIR}/env/bin/celery -A backend_config worker --loglevel=info
+Environment="PATH=${BASE_DIR}/env/bin"
+ExecStart=${BASE_DIR}/env/bin/celery -A celery_worker:app worker --loglevel=debug --pool=gevent --concurrency=8
 Restart=always
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
 EOF
-    sudo systemctl enable redis || true
-    sudo systemctl start redis
+    sudo systemctl enable redis-server || true
+    sudo systemctl start redis-server
     redis-cli ping
 }
 
-setup_redhat() {
-    echo "=== [RedHat/Amazon Linux] Actualizando repositorios ==="
-    sudo dnf update -y 2>/dev/null || sudo yum update -y
-
-    echo "=== [RedHat/Amazon Linux] Configurando nginx ==="
-    if [ ! -f /usr/sbin/nginx ]; then
-        sudo dnf install -y nginx 2>/dev/null || sudo yum install -y nginx
-        sudo tee /etc/nginx/conf.d/ims.conf > /dev/null <<NGINX
-# Rate limiting — definido fuera del bloque server
-limit_req_zone \$binary_remote_addr zone=login:10m rate=5r/m;
-
-server {
-    server_name 956.duckdns.org;
-
-    # Ocultar versión de Nginx
-    server_tokens off;
-
-    # Headers de seguridad
-    add_header X-Frame-Options "DENY" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Referrer-Policy "same-origin" always;
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    
-    location /static/ {
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self';" always;
-        alias /home/ubuntu/product/imSystem_Backend/backend/imSystem/staticfiles/;
-
-    }
-# Rate limiting solo en login
-
-    location /ims/api/login/ {
-        limit_req zone=login burst=3 nodelay;
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-
-        proxy_set_header X-Forwarded-Proto \$scheme;
-
-    }
-
-    location / {
-
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-
-    listen 443 ssl;
-    http2 on; # managed by Certbot
-    ssl_certificate /etc/letsencrypt/live/956.duckdns.org/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/956.duckdns.org/privkey.pem;
-    include /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-}
-server {
-    if (\$host = 956.duckdns.org) {
-        return 301 https://\$host\$request_uri;
-    } # managed by Certbot
-
-
-    listen 80;
-    server_name 956.duckdns.org;
-    return 404; # managed by Certbot
-
-
-}
-
-NGINX
-        if command -v setsebool &>/dev/null; then
-            echo "=== Habilitando SELinux boolean para nginx proxy ==="
-            sudo setsebool -P httpd_can_network_connect 1
-        fi
-    fi
-
-    echo "=== [RedHat/Amazon Linux] Instalando dependencias Python ==="
-    sudo dnf install -y python3 python3-pip git 2>/dev/null || \
-    sudo yum install -y python3 python3-pip git
-    echo "===INSTALANDO CELERY==="
-    sudo dnf install redis -y
-    sudo tee /etc/systemd/system/celery.service > /dev/null<<EOF
-[Unit]
-Description=Celery Worker
-After=network.target redis.service
-
-[Service]
-User=${BASE_USER}
-WorkingDirectory=${DJANGO_APP}
-ExecStart=${BASE_DIR}/env/bin/celery -A backend_config worker --loglevel=info
-Restart=always
- 
-[Install]
-WantedBy=multi-user.target
-EOF
-    sudo systemctl enable redis || true
-    sudo systemctl start redis
-    redis-cli ping
-}   
+   
 
 # ==DISPATCH==
-case "$DISTRO_FAMILY" in
-    debian)  setup_debian  ;;
-    redhat)  setup_redhat  ;;
-esac
+setup_debian
 
 # ==NGINX ARRANQUE==
-cp ~/product/imSystem_Backend/backend/ims_test_client.html ~/product/imSystem_Backend/backend/imSystem/staticfiles/
-chmod o+r ~/product/imSystem_Backend/backend/imSystem/staticfiles/ims_test_client.html
 sudo nginx -t
 sudo systemctl daemon-reload
 sudo systemctl enable nginx
 sudo systemctl start nginx || sudo systemctl restart nginx
 echo "=== Nginx status ==="
 sudo systemctl is-active nginx && echo "nginx: activo" || echo "WARN: nginx no está activo"
-
-# ==PERMISOS STATIC FILES==
-chmod o+x /home/${BASE_USER}
-chmod o+x /home/${BASE_USER}/product
-chmod o+x /home/${BASE_USER}/product/imSystem_Backend
-chmod o+x /home/${BASE_USER}/product/imSystem_Backend/backend
-chmod o+x /home/${BASE_USER}/product/imSystem_Backend/backend/imSystem
-chmod o+x /home/${BASE_USER}/product/imSystem_Backend/backend/imSystem/staticfiles 2>/dev/null || true
-
 # ==ENTORNO VIRTUAL Y DEPENDENCIAS==
 echo "=== Configurando entorno virtual Python ==="
 cd "$BASE_DIR"
@@ -314,16 +205,6 @@ fi
 echo "=== Instalando dependencias ==="
 "${BASE_DIR}/env/bin/pip" install -r "$INSTALL_FILE"
 "${BASE_DIR}/env/bin/pip" install "${APP_DIR}"/wheels/rustjson-*.whl
-echo "=== Generando archivos estáticos ==="
-"${BASE_DIR}/env/bin/python" "${DJANGO_APP}/manage.py" collectstatic --noinput
-
-chmod -R o+r "${DJANGO_APP}/staticfiles"
-
-# ==ENVIRONMENT FILE==
-sudo mkdir -p /etc/gunicorn
-sudo cp "$MIKUFILE" /etc/gunicorn/ims.env
-sudo chown root:root /etc/gunicorn/ims.env
-sudo chmod 640 /etc/gunicorn/ims.env
 
 # ==GUNICORN SERVICE==
 if [ ! -f /etc/systemd/system/gunicorn.service ]; then
@@ -339,7 +220,10 @@ WorkingDirectory=${DJANGO_APP}
 ExecStart=${BASE_DIR}/env/bin/gunicorn \\
     backend_config.wsgi:application \\
     --bind 127.0.0.1:8000 \\
-    --workers 3
+    --workers 2 \\
+    --worker-class gthread \\
+    --threads 4 \\
+    --backlog 2048
 Restart=always
 RestartSec=5
 
